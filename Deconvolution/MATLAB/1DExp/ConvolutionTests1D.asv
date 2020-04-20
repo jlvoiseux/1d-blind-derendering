@@ -1,0 +1,102 @@
+clear all
+close all
+
+x = linspace(-1, 1, 1000);
+mu = 0;
+sigma = 0.01;
+h_prep1 = normpdf(x, mu, sigma)/normpdf(0, mu, sigma);
+delta_num = 4;
+h_prep2 = zeros(1, 1000);
+h_prep2(1+length(h_prep2)/delta_num/2:length(h_prep2)/delta_num:end) = 1;
+h = conv(h_prep1, h_prep2);
+stem(h);
+title('Impulse response')
+
+figure;
+delta_num = 4;
+f = zeros(1, 1000);
+f(1+length(f)/delta_num/2:length(f)/delta_num:end) = 1;
+stem(f);
+title('Original signal')
+
+figure;
+g = conv(h, f);
+g = g/max(g);
+stem(g);
+title('Convolved signal')
+
+figure;
+% subplot(1,4,1);
+% f_est1 = deconvreg(g, h);
+% f_est1 = f_est1/max(f_est1);
+% stem(f_est1);
+% title('Reg Matlab')
+% subplot(1,4,2);
+% f_est2 = tik_deconv(g, convmtx(h, length(g)), 0.000000001);
+% f_est2 = f_est2/max(f_est2);
+% stem(f_est2);
+% title('Tik Home')
+subplot(1,4,3);
+f_est3 = blind_deconv_ibd(g, length(h), length(f), 0.1, 5);
+f_est3 = f_est3/max(f_est3);
+stem(f_est3);
+title('Blind IBD Home')
+% subplot(1,4,4);
+% f_est4 = blind_deconv_pam(g, length(h), 0.005, 0.00006, 1000);
+% f_est4 = f_est4/max(f_est4);
+% stem(f_est4);
+% title('Blind PAM Home')
+sgtitle('Deconvolved signal')
+
+figure;
+% subplot(1,4,1);
+% f_est1 = f_est1((end-length(f))/2+1:(end+length(f))/2);
+% stem(f_est1);
+% title('Reg Matlab')
+% subplot(1,4,2);
+% f_est2 = f_est2((end-length(f))/2+1:(end+length(f))/2);
+% stem(f_est2);
+% title('Tik Home')
+subplot(1,4,3);
+f_est3 = f_est3((end-length(f))/2+1:(end+length(f))/2);
+stem(f_est3);
+title('Blind IBD Home')
+% subplot(1,4,4);
+% f_est4 = f_est4((end-length(f))/2+1:(end+length(f))/2);
+% stem(f_est4);
+% title('Blind PAM Home')
+sgtitle('Deconvolved signal centered')
+
+function estimate = tik_deconv(g, H, alpha)
+    temp1 = H'*H + alpha*speye(size(H, 2));
+    temp2 = H'*g';
+    estimate = temp1\temp2;
+end
+
+function out = apply_fourier_constraints(A, B, C, alpha)
+    out = (A.*conj(B))./(abs(B).^2+(alpha./(abs(C).^2)));
+end
+
+function [f_est_final, h_est_final] = blind_deconv_ibd(g, h_size, f_size, alpha, count)
+    G = fft(g);
+    G_size = length(G);
+    f_est = ones(1, f_size);
+    h_est = zeros(1, h_size);
+    h_est(ceil(size(h_est, 2)/2)) = 1;
+    
+    H_est = fft(h_est, G_size);
+    for i=1:count
+        F_est = fft(f_est, G_size);
+        H_tilde = apply_fourier_constraints(G, F_est, H_est, alpha);
+        h_tilde = ifft(H_tilde);
+        h_est = abs(h_tilde(1:h_size));
+        
+        H_est = fft(h_est, G_size);
+        F_tilde = apply_fourier_constraints(G, H_est, F_est, alpha);
+        f_tilde = ifft(F_tilde);
+        f_est = abs(f_tilde(1:f_size));
+    end
+    f_est_final = f_est;
+    h_est_final = h_est;
+    
+end
