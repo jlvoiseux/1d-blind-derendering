@@ -1,7 +1,7 @@
 clear all
 close all
 
-num_lin = 50;
+num_lin = 1000;
 num_ang = 360;
 margin = 5;
 mirror_BRDF = @(angle_diff, margin) (1*(abs(angle_diff) <= margin/2));
@@ -11,13 +11,13 @@ blurred_mirror_BRDF = @(angle_diff, sigma) (normpdf(-angle_diff, -15, sigma)/nor
 %blurred_mirror_BRDF = @(angle_diff, margin) (1*(abs(angle_diff+30) <= margin/2));
 
 obs_pos = [0, -3];
-obs_size = 4;
+obs_size = 20;
 obs_interval = [-45, 45];
 obs = build_obs(obs_pos, obs_size, obs_interval);
 
 source_pos = [0, -3];
 source_support_width = 10;
-source_support_size = 4;
+source_support_size = 3;
 %source_function = @(x_axis) (0.25*(x_axis < 0) + (1*x_axis >= 0));
 %source_function = @(x_axis) (1);
 [source, interf_test] = build_source(source_pos, source_support_width, source_support_size, obs_size);
@@ -174,6 +174,7 @@ function [s_est, g_est, s_interf_est, g_interf_est, d_interf] = fbd(d, tau, clos
     g_est =  fpr(g_interf_est, tau, n, 1); 
     s_est = zeros(1, T);
     for i=1:n
+        g_est(:, i) = g_est(:, i)./max(g_est(:, i));
         s_est = s_est + ((1/n)*deconvlucy(d(:, i), fit_impulse(indices,g_est(:, i))))';
     end
 end
@@ -185,7 +186,7 @@ function [s_interf_est, g_interf_est] = fibd(d_interf, tau, tol, n, T, indices, 
     s_interf_est(T) = 1;
     %[s_interf_est, g_interf_est, g_indices] = improve(s_interf_est, g_interf_est, d_interf, true);
     g_interf_est = test_sum(d_interf);
-    g_interf_est(tau, :) = 0;
+    %g_interf_est(tau, :) = 0;
 %     for i = 1:n
 %         for j = 1:n
 %             index = get_col_num(i, j, n);
@@ -195,7 +196,7 @@ function [s_interf_est, g_interf_est] = fibd(d_interf, tau, tol, n, T, indices, 
 %             end
 %         end
 %     end
-    alpha = [1e5, 0];    
+    alpha = [0];    
     % Loop over decreasing alpha
     for i = 1:length(alpha)
         W1 = inf;
@@ -204,7 +205,7 @@ function [s_interf_est, g_interf_est] = fibd(d_interf, tau, tol, n, T, indices, 
         W2p = W2;
         deltaW = inf; 
         count = 0;
-        while deltaW > tol
+        while deltaW > 1e5
             if(count > 10)
                 break;
             end
@@ -234,14 +235,14 @@ function [s_interf_est, g_interf_est] = fibd(d_interf, tau, tol, n, T, indices, 
             Wprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Wexp); 
             %Wprob.Constraints.cons1 = gij(:) >= 0;
             %Wprob.Constraints.cons2 = sum(gij(sub2ind([2*tau-1 n*n], g_indices, 1:n*n))) >= sum(gij(tau, :));
-            W0.gij = g_interf_est;            
-            [Wsol,Wfval,~,~] = solve(Wprob,W0,'Options', optimoptions(@fminunc,'Display','iter', 'MaxFunctionEvaluations', 1e5));
+            %W0.gij = g_interf_est;            
+            %[Wsol,Wfval,~,~] = solve(Wprob,W0,'Options', optimoptions(@fminunc,'Display','iter', 'MaxFunctionEvaluations', 1e5));
             % 2.2 Assignements
-            g_interf_est = 0.5*Wsol.gij + 0.5*g_interf_est;  
+            %g_interf_est = Wsol.gij;  
             %[s_interf_est, g_interf_est] = improve(s_interf_est, g_interf_est, d_interf);
-            W2p = W2;
-            W2 = Wfval;
-            deltaW = max([W1p - W1 W2p - W2]);            
+            %W2p = W2;
+            %W2 = Wfval;
+            deltaW = W1p - W1;            
             disp(deltaW);
             count = count + 1;
         end
@@ -296,11 +297,11 @@ function out = computeW(s_interf_est, g_interf_est, d_interf, n, tau, alpha, ind
         end
     end
     % 1.1.2 Compute next term
-    g_same = g_interf_est(:, get_col_num(1:n, 1:n, n));
-    t = (-tau+1:tau-1)';
-    Wterm = sum(sum(t.*t.*g_same.*g_same));
-    W = V + alpha*Wterm;    
-    out = W;
+    %g_same = g_interf_est(:, get_col_num(1:n, 1:n, n));
+    %t = (-tau+1:tau-1)';
+    %Wterm = sum(sum(t.*t.*g_same.*g_same));
+    %W = V + alpha*Wterm;    
+    out = V;
 end
 
 function out = computeX(n, g_interf_est, g_est, i)
@@ -368,8 +369,8 @@ function out = fit_impulse(indices, source)
     end    
 end
 function out = test_sum(interf_g)
-    interf_g  = interf_g(19:80, :);
-    target = zeros(7, length(interf_g(1, :)));
+    interf_g  = interf_g(485:1615, :);
+    target = zeros(5, length(interf_g(1, :)));
     for i=1:length(interf_g(1, :))
         for j=1:length(target(:, 1))
             target(j, i) = mean(interf_g((j-1)*floor(length(interf_g(:, 1))/length(target(:, 1)))+1:j*floor(length(interf_g(:, 1))/length(target(:, 1))),i));
