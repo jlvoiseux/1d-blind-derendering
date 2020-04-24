@@ -23,10 +23,13 @@ function l_out = FastRenderingInterf(obs, source_interf, brdf_interf, num_ang, e
             [~,idx] = min(abs(angles_brdf_map-angle_in));
             lumin_map(idx) = lumin_map(idx) + empty_source(k, 3, 1);
         end
+        prop = 0.1;
         temp1 = xcorr(lumin_map);
+        temp1 = trim(temp1);
         temp1(temp1 > 0.5) = source_interf;
         temp2 = brdf_interf;
-        temp = conv(temp1, temp2, 'same');
+        temp = conv(temp1, temp2);
+        %temp = temp(round(prop*length(temp)):round(end-prop*length(temp)))./max(temp);
         angles_temp = linspace(angles_brdf_map(1), angles_brdf_map(end), length(temp));
         [~,idx] = min(abs(angles_temp + angle_out));
         l_out_temp(end-j+1) = temp(idx);
@@ -53,5 +56,21 @@ function intersection = ray_wall_intersection(ray_origin, ray_direction)
     intersection = NaN;
     return;
     
+end
+
+function out = trim(signal)
+    trim_flag = false;
+    for i=1:length(signal)
+        if signal(i) > 0.5
+            if trim_flag == true
+                signal(i) = 0;
+            else
+                trim_flag = true;
+            end
+        else
+            trim_flag = false;
+        end
+    end
+    out = signal;
 end
 

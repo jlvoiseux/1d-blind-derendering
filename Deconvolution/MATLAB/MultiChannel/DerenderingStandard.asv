@@ -10,12 +10,12 @@ function [s_est, g_est] = DerenderingStandard(d, s_est, g_est, T, n, tau, obs, e
         Rexp = fcn2optimexpr(Rfun,sa);
         Rprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Rexp);
         Rprob.Constraints.cons1 = sa(1:floor(T/2)) == flip(sa(ceil(T/2) + 1:end));
-        %Rprob.Constraints.cons2 = sa(:) >= 0;
-        %Rprob.Constraints.cons3 = sa(:) <= 1;
+        Rprob.Constraints.cons2 = sa(:) >= 0;
+        Rprob.Constraints.cons3 = sa(:) <= 1;
         R0.sa = s_est;            
         [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fmincon,'Display','iter', 'MaxFunctionEvaluations', 1e5));
         % 1.2 Assignements
-        s_est = abs(Rsol.sa);
+        s_est = Rsol.sa;
         R1p = R1;
         R1 = Rfval;
         % 2. Update g
@@ -24,10 +24,10 @@ function [s_est, g_est] = DerenderingStandard(d, s_est, g_est, T, n, tau, obs, e
         Rfun = @(gij) computeR(s_est, gij, d, n, obs, num_ang, empty_source);
         Rexp = fcn2optimexpr(Rfun,gij);
         Rprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Rexp); 
-        %Rprob.Constraints.cons1 = gij(:) >= 0;
-        %Rprob.Constraints.cons2 = gij(:) <= 1;
+        Rprob.Constraints.cons1 = gij(:) >= 0;
+        Rprob.Constraints.cons2 = gij(:) <= 1;
         R0.gij = g_est;            
-        [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fminunc,'Display','iter', 'MaxFunctionEvaluations', 1e5));
+        [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fmincon,'Display','iter', 'MaxFunctionEvaluations', 1e5));
         % 2.2 Assignements
         g_est = Rsol.gij;
         R2p = R2;
@@ -38,10 +38,11 @@ function [s_est, g_est] = DerenderingStandard(d, s_est, g_est, T, n, tau, obs, e
 end
 
 function out = computeR(s_est, g_est, d, n, obs, num_ang, empty_source)
-    % 1.1.1 Compute V
+    % 1.1.1 Compute V 
     R = 0;
+    g_interf_est = xcorr(g_es
     for k=1:n
-        temp_diff = d(:, k) - FastRendering(obs, g_est(:, k), s_est, num_ang, empty_source);
+        temp_diff = d(:, k) - FastRenderingInterf(obs, g_interf_est(:, get_col_num(k, l, n)), s_interf_est, num_ang, empty_source);
         temp_diff = temp_diff .* temp_diff;
         R = R + sum(temp_diff);
     end 

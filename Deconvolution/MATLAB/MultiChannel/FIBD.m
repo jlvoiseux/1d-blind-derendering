@@ -13,7 +13,7 @@ function [s_interf_est, g_interf_est] = FIBD(d_interf, T, n, tau, tol, obs, empt
         end
     end
     indices = get_indices(obs, empty_source, mirror_brdf, num_lin, margin, true);
-    alpha = [1e5 0];
+    alpha = [0 0];
     % Loop over decreasing alpha
     for i = 1:length(alpha)
         W1 = inf;
@@ -28,8 +28,9 @@ function [s_interf_est, g_interf_est] = FIBD(d_interf, T, n, tau, tol, obs, empt
             Wprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Wexp);
             Wprob.Constraints.cons1 = sa(T) == 1;            
             Wprob.Constraints.cons2 = sa(1:T-1) == flip(sa(T+1:end));
+            Wprob.Constraints.cons3 = sa(:) >= 0; 
             W0.sa = s_interf_est;            
-            [Wsol,Wfval,~,~] = solve(Wprob,W0,'Options', optimoptions(@fmincon,'Display','iter', 'MaxFunctionEvaluations', 1e5));
+            [Wsol,Wfval,~,~] = solve(Wprob,W0,'Options', optimoptions(@fmincon,'MaxFunctionEvaluations', 1e5));
             % 1.2 Assignements
             s_interf_est = Wsol.sa;
             W1p = W1;
@@ -41,7 +42,7 @@ function [s_interf_est, g_interf_est] = FIBD(d_interf, T, n, tau, tol, obs, empt
             Wexp = fcn2optimexpr(Wfun,gij);
             Wprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Wexp); 
             W0.gij = g_interf_est;            
-            [Wsol,Wfval,~,~] = solve(Wprob,W0,'Options', optimoptions(@fminunc,'Display','iter', 'MaxFunctionEvaluations', 1e5));
+            [Wsol,Wfval,~,~] = solve(Wprob,W0,'Options', optimoptions(@fminunc,'MaxFunctionEvaluations', 1e5));
             % 2.2 Assignements
             g_interf_est = Wsol.gij;
             W2p = W2;
@@ -89,12 +90,30 @@ end
 function indices = get_indices(obs, empty_source, mirror_brdf, num_lin, margin, interf)
     g_mirror = SimpleRendering(obs, empty_source, mirror_brdf, num_lin, margin);
     g_mirror = g_mirror(1, :);
+    g_mirror = trim(g_mirror);
     if interf
-        g_mirror = xcorr(g_mirror);
+        g_mirror = xcorr(g_mirror); 
+        g_mirror = trim(g_mirror);
         indices = find(g_mirror>0.5);
     else
         indices = find(g_mirror>0.5);
     end
+end
+
+function out = trim(signal)
+    trim_flag = false;
+    for i=1:length(signal)
+        if signal(i) > 0.5
+            if trim_flag == true
+                signal(i) = 0;
+            else
+                trim_flag = true;
+            end
+        else
+            trim_flag = false;
+        end
+    end
+    out = signal;
 end
 
 function out = fit_impulses(T, impulses, indices)
