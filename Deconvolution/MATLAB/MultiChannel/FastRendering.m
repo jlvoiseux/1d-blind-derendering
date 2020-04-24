@@ -1,14 +1,13 @@
-function l_out = FastRenderingInterf(obs, source_interf, brdf_interf, num_ang, empty_source)
-    T = length(brdf_interf);
+function l_out = FastRendering(obs, source, brdf, num_ang, empty_source)
+    T = length(brdf);
     angles_brdf_map = linspace(-180, 180, num_ang);
     x_axis = zeros(1, T);
-    
     obs_angle = linspace(obs(3)+90, obs(4)+90, 2);
     wall_points = zeros(2, 2);    
     for j=1:2
         obs_direction = [cos(obs_angle(j)*pi/180), sin(obs_angle(j)*pi/180)];
         wall_points(j, :) = obs([1 2]) + obs_direction*ray_wall_intersection(obs([1 2]), obs_direction);
-    end    
+    end 
     
     x_axis(:) = linspace(wall_points(1, 1), wall_points(2, 1), T);
     l_out_temp = zeros(1, T);
@@ -23,9 +22,9 @@ function l_out = FastRenderingInterf(obs, source_interf, brdf_interf, num_ang, e
             [~,idx] = min(abs(angles_brdf_map-angle_in));
             lumin_map(idx) = lumin_map(idx) + empty_source(k, 3, 1);
         end
-        temp1 = xcorr(lumin_map);
-        temp1(temp1 > 0.5) = source_interf;
-        temp2 = brdf_interf;
+        temp1 = lumin_map;
+        temp1(temp1 > 0.5) = source;
+        temp2 = brdf;
         temp = conv(temp1, temp2, 'same');
         angles_temp = linspace(angles_brdf_map(1), angles_brdf_map(end), length(temp));
         [~,idx] = min(abs(angles_temp + angle_out));
@@ -33,6 +32,7 @@ function l_out = FastRenderingInterf(obs, source_interf, brdf_interf, num_ang, e
     end
     
     l_out = l_out_temp';
+    
 end
 
 function intersection = ray_wall_intersection(ray_origin, ray_direction)
@@ -54,4 +54,3 @@ function intersection = ray_wall_intersection(ray_origin, ray_direction)
     return;
     
 end
-

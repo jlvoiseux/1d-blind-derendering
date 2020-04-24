@@ -28,14 +28,8 @@ function [x_est, h_est] = blind_derendering(d, tau, obs, empty_source, num_ang, 
     d = d';
     d_interf = xcorr(d, 'normalize');
     
-    g_est = rand(tau, n);
-    s_est = ones(T, 1);
-    s_interf_est = zeros(2*T-1, 1);
-    s_interf_est(T) = 1;
-    g_interf_est = rand(2*tau-1, n*n);
-    
     [s_interf_est, g_interf_est] = FIBD(d_interf, T, n, tau, 1e-3, obs, empty_source, mirror_BRDF, num_lin, margin);
-    %[~, g_interf_est] = DerenderingInterf(d_interf, s_interf_est, g_interf_est, T, n, tau, obs, empty_source, num_ang, 1e-3);
+    [~, g_interf_est] = DerenderingInterf(d_interf, s_interf_est, g_interf_est, T, n, tau, obs, empty_source, num_ang, 1e-3);
     g_est = PhaseRetrieval(g_interf_est, tau, n);
     s_est = PhaseRetrievalAuto(s_interf_est, T);
     [s_est, g_est] = DerenderingStandard(d, s_est, g_est, T, n, tau, obs, empty_source, num_ang, 1e-3);

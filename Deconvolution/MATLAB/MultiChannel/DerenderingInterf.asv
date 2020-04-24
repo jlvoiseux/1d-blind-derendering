@@ -1,0 +1,37 @@
+function out = DerenderingInterf(d_interf, s_interf_est, g_interf_est, T, n, tau)  
+        R1 = inf;
+        R2 = inf;
+        deltaW = inf;
+        while deltaW > tol
+            % 1. Update s
+            % 1.1 Optimize W with s
+            sa = optimvar('sa', 2*T-1);
+            Rfun = @(sa) computeR(sa, g_interf_est, d_interf, n, tau);
+            Rexp = fcn2optimexpr(Rfun,sa);
+            Rprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Rexp);
+            Rprob.Constraints.cons1 = sa(T) == 1;            
+            Rprob.Constraints.cons2 = sa(1:T-1) == flip(sa(T+1:end));
+            R0.sa = s_interf_est;            
+            [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fmincon,'Display','iter', 'MaxFunctionEvaluations', 1e5));
+            % 1.2 Assignements
+            s_interf_est = Rsol.sa;
+            R1p = R1;
+            R1 = Rfval;
+            % 2. Update g
+            % 2.1 Optimize W with g
+            gij = optimvar('gij', 2*tau-1, n*n);
+            Rfun = @(gij) computeR(s_interf_est, gij, d_interf, n, tau);
+            Rexp = fcn2optimexpr(Rfun,gij);
+            Rprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Rexp); 
+            R0.gij = g_interf_est;            
+            [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fminunc,'Display','iter', 'MaxFunctionEvaluations', 1e5));
+            % 2.2 Assignements
+            g_interf_est = Rsol.gij;
+            R2p = R2;
+            R2 = Rfval;
+            deltaW = max([R1p - R1 R2p - R2]);            
+            disp(deltaW);
+        end
+    end
+    g_interf_est = test_sum(d_interf);
+end

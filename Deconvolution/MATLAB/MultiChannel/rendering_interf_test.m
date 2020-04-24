@@ -1,8 +1,8 @@
 clear all
 close all
 
-num_lin = 5000;
-num_ang = 2000;
+num_lin = 1000;
+num_ang = 1000;
 margin = 1;
 mirror_BRDF = @(angle_diff, margin) (1*(abs(angle_diff) <= margin/2));
 
@@ -11,7 +11,7 @@ blurred_mirror_BRDF = @(angle_diff, sigma) (normpdf(-angle_diff, -15, sigma)/nor
 %blurred_mirror_BRDF = @(angle_diff, margin) (1*(abs(angle_diff+30) <= margin/2));
 
 obs_pos = [0, -5];
-obs_size = 1;
+obs_size = 2;
 obs_interval = [-45, 45];
 obs = build_obs(obs_pos, obs_size, obs_interval);
 
@@ -46,23 +46,23 @@ mirr_g_xcorr = xcorr(mirr_g, 'normalized');
 [mirr_xc, mirr_hc, mirr_gc_xcorr] = rendering(obs, source, mirror_BRDF, 2*num_lin-1, num_ang, margin, true, true);
 
 [x, h, g] = rendering(obs, source, blurred_mirror_BRDF, num_lin, num_ang, sigma, false, false);
-g_xcorr = xcorr(g, 'normalized');
+g_xcorr = xcorr(g', 'normalized');
 [xc, hc, gc_xcorr] = rendering(obs, source, blurred_mirror_BRDF, 2*num_lin-1, num_ang, sigma, true, true);
 
-err1 = immse(mirr_g_xcorr, mirr_gc_xcorr);
-err2 = immse(g_xcorr, gc_xcorr);
+%err1 = immse(mirr_g_xcorr, mirr_gc_xcorr);
+%err2 = immse(g_xcorr, gc_xcorr);
 
-figure;
-subplot(1, 2, 1)
-stem(mirr_g_xcorr);
-subplot(1, 2, 2)
-stem(mirr_gc_xcorr);
-
-figure;
-subplot(1, 2, 1)
-stem(g_xcorr);
-subplot(1, 2, 2)
-stem(gc_xcorr);
+% figure;
+% subplot(1, 2, 1)
+% stem(mirr_g_xcorr);
+% subplot(1, 2, 2)
+% stem(mirr_gc_xcorr);
+% 
+% figure;
+% subplot(1, 2, 1)
+% stem(g_xcorr);
+% subplot(1, 2, 2)
+% stem(gc_xcorr);
 
 
 %% Functions
