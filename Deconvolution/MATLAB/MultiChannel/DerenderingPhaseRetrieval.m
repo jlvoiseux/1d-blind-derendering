@@ -6,7 +6,7 @@ function [s_est, g_est] = DerenderingPhaseRetrieval(d_interf, s_est, g_est, T, n
         % 1. Update s
         % 1.1 Optimize W with s
         sa = optimvar('sa', T);
-        Rfun = @(sa) computeR(sa, g_est, d_interf, n, obs, num_ang, empty_source);
+        Rfun = @(sa) computeR(sa, g_est, d_interf, obs, num_ang, empty_source);
         Rexp = fcn2optimexpr(Rfun,sa);
         Rprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Rexp);
         Rprob.Constraints.cons1 = sa(1:floor(T/2)) == flip(sa(ceil(T/2) + 1:end));
@@ -21,7 +21,7 @@ function [s_est, g_est] = DerenderingPhaseRetrieval(d_interf, s_est, g_est, T, n
         % 2. Update g
         % 2.1 Optimize W with g
         gij = optimvar('gij', tau, n);
-        Rfun = @(gij) computeR(s_est, gij, d_interf, n, obs, num_ang, empty_source);
+        Rfun = @(gij) computeR(s_est, gij, d_interf, obs, num_ang, empty_source);
         Rexp = fcn2optimexpr(Rfun,gij);
         Rprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Rexp); 
         %Rprob.Constraints.cons1 = gij(:) >= 0;
@@ -37,21 +37,11 @@ function [s_est, g_est] = DerenderingPhaseRetrieval(d_interf, s_est, g_est, T, n
     end
 end
 
-function out = computeR(s_est, g_est, d_interf, n, obs, num_ang, empty_source)
+function out = computeR(s_est, g_est, d_interf, obs, num_ang, empty_source)
     % 1.1.1 Compute V
-    R = 0;
-    for k=1:n
-        for l=1:n
-            g_est_interf = xcorr(g_est);
-            s_est_interf = xcorr(s_est);
-            temp_diff = d_interf(:, get_col_num(k,l,n)) - FastRenderingInterf(obs, g_est_interf(:, get_col_num(k,l,n)), s_est_interf, num_ang, empty_source);
-            temp_diff = temp_diff .* temp_diff;
-            R = R + sum(temp_diff);
-        end
-    end 
+    temp1 = FastRendering(obs, g_est, s_est, num_ang, empty_source);
+    temp_diff = d_interf - xcorr(temp1);
+    temp_diff = temp_diff .* temp_diff;
+    R = sum(sum(temp_diff));
     out = R;
-end
-
-function out = get_col_num(i,j, obs_num)
-    out = (i-1).*obs_num + j;
 end

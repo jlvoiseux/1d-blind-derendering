@@ -9,7 +9,7 @@ function [s_interf_est, g_interf_est] = DerenderingInterf(d_interf, s_interf_est
             % 1. Update s
             % 1.1 Optimize W with s
             sa = optimvar('sa', 2*T-1);
-            Rfun = @(sa) computeR(sa, g_interf_est, d_interf, n, obs, num_ang, tau, alpha(i), empty_source);
+            Rfun = @(sa) computeR(sa, g_interf_est, d_interf, obs, num_ang, tau, alpha(i), empty_source);
             Rexp = fcn2optimexpr(Rfun,sa);
             Rprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Rexp);
             %Rprob.Constraints.cons1 = sa(T) == 1;            
@@ -26,7 +26,7 @@ function [s_interf_est, g_interf_est] = DerenderingInterf(d_interf, s_interf_est
             % 2. Update g
             % 2.1 Optimize W with g
             gij = optimvar('gij', 2*tau-1, n*n);
-            Rfun = @(gij) computeR(s_interf_est, gij, d_interf, n, obs, num_ang, tau, alpha(i), empty_source);
+            Rfun = @(gij) computeR(s_interf_est, gij, d_interf, obs, num_ang, tau, alpha(i), empty_source);
             Rexp = fcn2optimexpr(Rfun,gij);
             Rprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Rexp); 
             %Rprob.Constraints.cons1 = gij(:) <= 1;  
@@ -44,22 +44,17 @@ function [s_interf_est, g_interf_est] = DerenderingInterf(d_interf, s_interf_est
     s_interf_est = s_interf_est./max(s_interf_est);
 end
 
-function out = computeR(s_interf_est, g_interf_est, d_interf, n, obs, num_ang, tau, alpha, empty_source)
-    % 1.1.1 Compute V
-    R = 0;
-    for k=1:n
-        for l=1:n
-            temp1 = d_interf(:, get_col_num(k, l, n));
-            temp2 = FastRenderingInterf(obs, g_interf_est(:, get_col_num(k, l, n)), s_interf_est, num_ang, empty_source);
-            temp_diff = temp1 - temp2;
-            temp_diff = temp_diff .* temp_diff;
-            R = R + sum(temp_diff);
-        end
-    end 
-    g_same = g_interf_est(:, get_col_num(1:n, 1:n, n));
-    t = (-tau+1:tau-1)';
-    Rterm = sum(sum(t.*t.*g_same.*g_same));
-    R = R + alpha*Rterm;    
+function out = computeR(s_interf_est, g_interf_est, d_interf, obs, num_ang, tau, alpha, empty_source)
+    % 1.1.1 Compute V    
+    temp1 = FastRenderingInterf(obs, g_interf_est, s_interf_est, num_ang, empty_source);
+    temp_diff = d_interf - temp1;
+    temp_diff = temp_diff .* temp_diff;
+    R = sum(sum(temp_diff));
+        
+%     g_same = g_interf_est(:, get_col_num(1:n, 1:n, n));
+%     t = (-tau+1:tau-1)';
+%     Rterm = sum(sum(t.*t.*g_same.*g_same));
+%     R = R + alpha*Rterm;    
     out = R;
 end
 

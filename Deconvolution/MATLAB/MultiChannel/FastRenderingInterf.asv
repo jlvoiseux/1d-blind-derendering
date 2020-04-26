@@ -27,17 +27,15 @@ function l_out = FastRenderingInterf(obs, source_interf, brdf_interf, num_ang, e
         lumin_map(indexes) = lumin_map(indexes) + empty_source(k, 3, 1);
     end
     temp = zeros(2*T-1, 2*(2*num_ang-1)-1, n);
-    for j=round(T/2):2*T-1-round(T/2)
+    for j=1:2*T-1
         temp1 = xcorr(lumin_map(j, :));
-        temp1 = trim(temp1, length(source_interf(:,1)));
+        temp1 = trim(temp1);
         temp2 = brdf_interf;
-        temp4 = zeros(2*(2*num_ang-1)-1, n);
         for i=1:n
             temp3 = zeros(size(temp1));
-            temp3(temp1 > 0.5) = source_interf(:,i); 
-            temp4(:, i) = conv(temp3, temp2);           
+            temp3(temp1 > 0.5) = source_interf(:,i);            
+            temp(j, :, i) = conv(temp3, temp2); 
         end
-        temp(j, :, :) = temp4;
     end
     angles_temp = linspace(angles_brdf_map(1, 1), angles_brdf_map(1, end), 2*(2*num_ang-1)-1).*ones(2*T-1, 2*(2*num_ang-1)-1);
     [~,idx] = min(abs(angles_temp + angle_out'), [], 2);
@@ -48,12 +46,12 @@ function l_out = FastRenderingInterf(obs, source_interf, brdf_interf, num_ang, e
         l_out_temp = l_out_temp(round(T/2):end-round(T/2));
         l_out_temp = interp(l_out_temp,2);
         if(length(l_out_temp) < 2*T-1)
-            diff = 2*T-1-length(l_out_temp);
-            l_out_temp = [l_out_temp, zeros(1, diff)];
+            diff = 
+            l_out_temp = [l_out_temp, 0];
         elseif(length(l_out_temp) > 2*T-1)
-            diff = length(l_out_temp) - (2*T-1);
-            l_out_temp = l_out_temp(1:end-diff);
+            l_out_temp = l_out_temp(1:end);
         end
+        l_out_temp = l_out_temp(1:end-1);
         l_out(:, i) = flip(l_out_temp)';
     end    
 end
@@ -78,9 +76,19 @@ function intersection = ray_wall_intersection(ray_origin, ray_direction)
     
 end
 
-function out = trim(signal, num)
-    [~, ind] = maxk(signal, num);
-    out = zeros(size(signal));
-    out(ind) = 1;
+function out = trim(signal)
+    trim_flag = false;
+    for i=1:length(signal)
+        if signal(i) > 0.5
+            if trim_flag == true
+                signal(i) = 0;
+            else
+                trim_flag = true;
+            end
+        else
+            trim_flag = false;
+        end
+    end
+    out = signal;
 end
 

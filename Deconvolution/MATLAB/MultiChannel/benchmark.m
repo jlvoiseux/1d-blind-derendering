@@ -1,53 +1,68 @@
 clear all
 close all
 
-num_lin = 25;
-num_ang = 25;
+num_lin = 500;
+num_ang = 500;
 margin = 5;
 mirror_BRDF = @(angle_diff, margin) (1*(abs(angle_diff) <= margin/2));
 sigma = 1;
 blurred_mirror_BRDF = @(angle_diff, sigma) (normpdf(-angle_diff, -15, sigma)/normpdf(0, 0, sigma)  +  normpdf(-angle_diff, 15, sigma)/normpdf(0, 0, sigma) + normpdf(-angle_diff, -35, sigma)/normpdf(0, 0, sigma)  +  normpdf(-angle_diff, 35, sigma)/normpdf(0, 0, sigma));
 
 obs_pos = [0, -5];
-obs_size = 2;
+obs_size = 4;
 obs_interval = [-45, 45];
 obs = build_obs(obs_pos, obs_size, obs_interval);
 
-source_pos = [0, -5];
+source_pos = [0, -50];
 source_support_width = 10;
 source_support_size = 2;
 [source, interf_test] = build_source(source_pos, source_support_width, source_support_size, obs_size, false);
 [empty_source, ~] = build_source(source_pos, source_support_width, source_support_size, obs_size, true);
 
-[x, h, g] = FullRendering(obs, source, blurred_mirror_BRDF, num_lin, num_ang, sigma);
-[x_est, h_est, x_interf_est, h_interf_est] = blind_derendering(g, source_support_size, obs, empty_source, num_ang, num_lin, mirror_BRDF, margin);
+%% Rendering calls
+% Reference rendering
+tic
+[x0, h0, g0] = FullRendering(obs, source, blurred_mirror_BRDF, num_lin, num_ang, sigma);
+toc
+g0 = g0';
+% Single convolution approximation
+tic
+g1 = RenderingConv(obs, source, blurred_mirror_BRDF, sigma, num_lin, num_ang, mirror_BRDF, margin);
+toc
+g1 = g1';
+% Rendering operator
+tic
+g2 = FastRendering(obs, reshape(source(:,3,:), source_support_size, obs_size), h0, num_ang, empty_source);
+toc
+% Interferometric rendering from interferometric quantities
+tic
+brdf_interf = xcorr(h0);
+g3 = FastRenderingInterf(obs, interf_test, brdf_interf, num_ang, empty_source);
+toc
 
-function [x_est, h_est, x_interf_est, h_interf_est] = blind_derendering(d, tau, obs, empty_source, num_ang, num_lin, mirror_BRDF, margin)
-    n = length(d(:, 1));
-    T = length(d(1, :));
-    d = d';
-    d_interf = xcorr(d, 'normalize');
-    
-     g_est = rand(tau, n);
-     s_est = ones(T, 1);
-     s_interf_est = zeros(2*T-1, 1);
-%     s_interf_est(T) = 1;
-     g_interf_est = rand(2*tau-1, n*n);
-    
-    [s_interf_est, g_interf_est] = FIBD(d_interf, T, n, tau, 5e-3, obs, empty_source, mirror_BRDF, num_lin, margin);
-    [s_interf_est, g_interf_est] = DerenderingInterf(d_interf, s_interf_est, g_interf_est, T, n, tau, obs, empty_source, num_ang, 1e-2);
-    g_est = PhaseRetrieval(g_interf_est, tau, n);
-    s_est = PhaseRetrievalAuto(s_interf_est, T);
-    [s_est, g_est] = DerenderingPhaseRetrieval(d_interf, s_est, g_est, T, n, tau, obs, empty_source, num_ang, 5e-3);
-    [s_est, g_est] = DerenderingStandard(d, s_est, g_est, T, n, tau, obs, empty_source, num_ang, 5e-3);
-    for i=1:n
-        g_est(:, i) = g_est(:, i)./max(g_est(:, i));
-    end
-    h_est = s_est;
-    h_interf_est = s_interf_est;
-    x_est = g_est;
-    x_interf_est = g_interf_est;
-end
+%% Plots
+figure;
+subplot(1, 2, 1)
+imagesc(g0);
+subplot(1, 2, 2)
+imagesc(g1);
+title("Convolution approx")
+
+figure;
+subplot(1, 2, 1)
+imagesc(g0);
+subplot(1, 2, 2)
+imagesc(g2);
+title("Full convolution")
+
+figure;
+subplot(1, 2, 1)
+imagesc(xcorr(g0));
+subplot(1, 2, 2)
+imagesc(g3);
+title("Interf from interf")
+
+%% Functions
 
 function [source, interf_test] = build_source(source_pos, source_support_width, source_support_size, obs_size, isempty)
     source = zeros(source_support_size, 3, obs_size);
@@ -79,4 +94,3 @@ end
 function obs = build_obs(obs_pos, obs_size, obs_interval)
     obs = [obs_pos(1) obs_pos(2) obs_interval(1) obs_interval(2) obs_size];    
 end
-

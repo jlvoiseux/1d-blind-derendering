@@ -6,7 +6,7 @@ function [s_est, g_est] = DerenderingStandard(d, s_est, g_est, T, n, tau, obs, e
         % 1. Update s
         % 1.1 Optimize W with s
         sa = optimvar('sa', T);
-        Rfun = @(sa) computeR(sa, g_est, d, n, obs, num_ang, empty_source);
+        Rfun = @(sa) computeR(sa, g_est, d, obs, num_ang, empty_source);
         Rexp = fcn2optimexpr(Rfun,sa);
         Rprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Rexp);
         Rprob.Constraints.cons1 = sa(1:floor(T/2)) == flip(sa(ceil(T/2) + 1:end));
@@ -21,7 +21,7 @@ function [s_est, g_est] = DerenderingStandard(d, s_est, g_est, T, n, tau, obs, e
         % 2. Update g
         % 2.1 Optimize W with g
         gij = optimvar('gij', tau, n);
-        Rfun = @(gij) computeR(s_est, gij, d, n, obs, num_ang, empty_source);
+        Rfun = @(gij) computeR(s_est, gij, d, obs, num_ang, empty_source);
         Rexp = fcn2optimexpr(Rfun,gij);
         Rprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Rexp); 
         %Rprob.Constraints.cons1 = gij(:) >= 0;
@@ -37,13 +37,10 @@ function [s_est, g_est] = DerenderingStandard(d, s_est, g_est, T, n, tau, obs, e
     end
 end
 
-function out = computeR(s_est, g_est, d, n, obs, num_ang, empty_source)
+function out = computeR(s_est, g_est, d, obs, num_ang, empty_source)
     % 1.1.1 Compute V
-    R = 0;
-    for k=1:n
-        temp_diff = d(:, k) - FastRendering(obs, g_est(:, k), s_est, num_ang, empty_source);
-        temp_diff = temp_diff .* temp_diff;
-        R = R + sum(temp_diff);
-    end 
+    temp_diff = d - FastRendering(obs, g_est, s_est, num_ang, empty_source);
+    temp_diff = temp_diff .* temp_diff;
+    R = sum(sum(temp_diff));
     out = R;
 end
