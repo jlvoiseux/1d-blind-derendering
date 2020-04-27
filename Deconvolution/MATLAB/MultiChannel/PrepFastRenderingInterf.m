@@ -1,20 +1,16 @@
 %% Produces an interferometric render using interferometric values
 
-function l_out = FastRenderingInterf(obs, source_interf, brdf_interf, num_ang, empty_source)
-    T = (length(brdf_interf)+1)/2;
+function [temp1, indexes] = PrepFastRenderingInterf(obs, num_ang, empty_source, tau, T)    
     angles_brdf_map = linspace(-180, 180, num_ang).*ones(2*T-1, num_ang);
     x_axis = zeros(1, 2*T-1);
-    n = length(source_interf(1, :));
     obs_angle = linspace(obs(3)+90, obs(4)+90, 2);
-    wall_points = zeros(2, 2);   
-    l_out = zeros(2*T-1, n);
+    wall_points = zeros(2, 2);      
     for j=1:2
         obs_direction = [cos(obs_angle(j)*pi/180), sin(obs_angle(j)*pi/180)];
         wall_points(j, :) = obs([1 2]) + obs_direction*ray_wall_intersection(obs([1 2]), obs_direction);
     end    
     
-    x_axis(:) = linspace(wall_points(1, 1), wall_points(2, 1), 2*T-1);
-    l_out_temp = zeros(1, 2*T-1);
+    x_axis(:) = linspace(wall_points(1, 1), wall_points(2, 1), 2*T-1);    
     normal = [x_axis(1:2*T-1); -1*ones(1, 2*T-1)] - [x_axis(1:2*T-1); zeros(1, 2*T-1)];
     dir_out = [obs(1)*ones(1, 2*T-1); obs(2)*ones(1, 2*T-1)] - [x_axis(1:2*T-1); zeros(1, 2*T-1)];
     angle_out = atan2d(normal(1, :).*dir_out(2, :)-normal(2, :).*dir_out(1, :), normal(1, :).*dir_out(1, :)+normal(2, :).*dir_out(2, :));
@@ -26,34 +22,15 @@ function l_out = FastRenderingInterf(obs, source_interf, brdf_interf, num_ang, e
         indexes = sub2ind(size(lumin_map),(1:2*T-1)',idx);
         lumin_map(indexes) = lumin_map(indexes) + empty_source(k, 3, 1);
     end
-    temp = zeros(2*T-1, 2*(2*num_ang-1)-1, n);
-    for j=1:2*T-1
+    temp1 = zeros(2*T-1-T, 2*num_ang-1);    
+    for j=round(T/2):2*T-1-round(T/2)
         temp1 = xcorr(lumin_map(j, :));
-        temp1 = trim(temp1);
-        temp2 = brdf_interf;
-        for i=1:n
-            temp3 = zeros(size(temp1));
-            temp3(temp1 > 0.5) = source_interf(:,i);            
-            temp(j, :, i) = conv(temp3, temp2); 
-        end
+        temp1 = trim(temp1, 2*tau-1);        
     end
     angles_temp = linspace(angles_brdf_map(1, 1), angles_brdf_map(1, end), 2*(2*num_ang-1)-1).*ones(2*T-1, 2*(2*num_ang-1)-1);
-    [~,idx] = min(abs(angles_temp + angle_out'), [], 2);
-    indexes = sub2ind(size(angles_temp),(1:2*T-1)',idx);
-    for i=1:n
-        temp2 = temp(:, :, i);
-        l_out_temp(end-(1:2*T-1)+1) = temp2(indexes);
-        l_out_temp = l_out_temp(round(T/2):end-round(T/2));
-        l_out_temp = interp(l_out_temp,2);
-        if(length(l_out_temp) < 2*T-1)
-            diff = 
-            l_out_temp = [l_out_temp, 0];
-        elseif(length(l_out_temp) > 2*T-1)
-            l_out_temp = l_out_temp(1:end);
-        end
-        l_out_temp = l_out_temp(1:end-1);
-        l_out(:, i) = flip(l_out_temp)';
-    end    
+    [~,indexes] = min(abs(angles_temp + angle_out'), [], 2);
+    %indexes = sub2ind(size(angles_temp),(1:2*T-1)',idx);    
+    
 end
 
 function intersection = ray_wall_intersection(ray_origin, ray_direction)
@@ -76,19 +53,9 @@ function intersection = ray_wall_intersection(ray_origin, ray_direction)
     
 end
 
-function out = trim(signal)
-    trim_flag = false;
-    for i=1:length(signal)
-        if signal(i) > 0.5
-            if trim_flag == true
-                signal(i) = 0;
-            else
-                trim_flag = true;
-            end
-        else
-            trim_flag = false;
-        end
-    end
-    out = signal;
+function out = trim(signal, num)
+    [~, ind] = maxk(signal, num);
+    out = zeros(size(signal));
+    out(ind) = 1;
 end
 

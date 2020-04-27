@@ -60,21 +60,14 @@ for k=1:2*source_support_size-1
     temp(:, k) = sum(mat_interf, 2);
 end
 for i=1:obs_size    
-    for j=1:obs_size
-        for k=1:2*source_support_size-1
-            temp(:, k) = mat_interf(:, i) + mat_interf(:, j);
-        end
+    for j=1:obs_size        
         g5(:, get_col_num(i,j, obs_size)) = temp*(xcorr(source(:, 3, i), source(:, 3, j), 'normalized') + xcorr(source(:, 3, j), source(:, 3, i), 'normalized'));
     end
 end
 toc
 
 corrtest = xcorr(g0);
-test = zeros(2*num_lin-1, obs_size*obs_size);
-for i=1:obs_size*obs_size
-    test(:, i) = corrtest(:, i).*sum(mat_interf, 2);
-end
-
+test 
 %% Plots
 figure;
 subplot(1, 2, 1)
@@ -106,9 +99,9 @@ title("Matrix product")
 
 figure;
 subplot(1, 2, 1)
-imagesc(test);
+imagesc(corrtest(:, 1));
 subplot(1, 2, 2)
-imagesc(g5);
+imagesc(g5(:, 1));
 title("Matrix interf")
 
 %% Functions

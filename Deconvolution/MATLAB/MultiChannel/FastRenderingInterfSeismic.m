@@ -1,12 +1,13 @@
 %% Produces a normal render using normal values
 
-function l_out = FastRendering(obs, source, brdf, num_ang, empty_source)
+function l_out = FastRenderingInterfSeismic(obs, source, brdf_interf, num_ang, empty_source)
     n = obs(5);
-    T = length(brdf);
+    T = length(brdf_interf);
     angles_brdf_map = linspace(-180, 180, num_ang).*ones(T, num_ang);
     x_axis = zeros(1, T);
     obs_angle = linspace(obs(3)+90, obs(4)+90, 2);
     wall_points = zeros(2, 2);    
+    l_out = zeros(T, n*n);
     for j=1:2
         obs_direction = [cos(obs_angle(j)*pi/180), sin(obs_angle(j)*pi/180)];
         wall_points(j, :) = obs([1 2]) + obs_direction*ray_wall_intersection(obs([1 2]), obs_direction);
@@ -25,25 +26,30 @@ function l_out = FastRendering(obs, source, brdf, num_ang, empty_source)
             angle_in = atan2d(normal(1, :).*dir_in(2, :)-normal(2, :).*dir_in(1, :) ,normal(1, :).*dir_in(1, :)+normal(2, :).*dir_in(2, :));
             [~,idx] = min(abs(angles_brdf_map-angle_in'), [], 2);
             indexes = sub2ind(size(lumin_map),(1:T)',idx);
-            lumin_map(indexes) = lumin_map(indexes) + source(k);
+            lumin_map(indexes) = lumin_map(indexes) + source(k, i);
         end
         lumin_map_obs(:, :, i) = lumin_map;
     end
-    temp = zeros(T, num_ang, n);
+    temp = zeros(T, 1498, n*n);
     for j=1:T
         for i=1:n
-            temp(j, :, i) = conv(lumin_map_obs(j, :, i), brdf, 'same'); % Make full BRDF map to avoid 'same'
+            for k=1:n
+                temp(j, :, get_col_num(i,k, n)) = conv(lumin_map_obs(j, :, k) + lumin_map_obs(j, :, i), brdf_interf); % Make full BRDF map to avoid 'same'
+            end
         end
     end  
-    angles_temp = linspace(angles_brdf_map(1, 1), angles_brdf_map(1, end), num_ang).*ones(T, num_ang);
+    angles_temp = linspace(angles_brdf_map(1, 1), angles_brdf_map(1, end), 1498).*ones(T, 1498);
     [~,idx] = min(abs(angles_temp + angle_out'), [], 2);
     indexes = sub2ind(size(angles_temp),(1:T)',idx);
-    for i=1:n
+    for i=1:n*n
         temp2 = temp(:, :, i);
-        l_out_temp(end-(1:T)+1) = temp(indexes);   
-        l_out = l_out_temp';
-        l_out = flip(l_out);
-    
+        l_out_temp(end-(1:T)+1) = temp2(indexes);   
+        l_out(:, i) = flip(l_out_temp)';
+    end    
+end
+
+function out = get_col_num(i,j, obs_num)
+    out = (i-1).*obs_num + j;
 end
 
 function intersection = ray_wall_intersection(ray_origin, ray_direction)
