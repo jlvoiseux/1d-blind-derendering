@@ -1,8 +1,8 @@
 clear all
-close all
+%close all
 
 num_lin = 2000;
-num_ang = 50;
+num_ang = 2000;
 margin = 5;
 mirror_BRDF = @(angle_diff, margin) (1*(abs(angle_diff) <= margin/2));
 
@@ -11,7 +11,7 @@ blurred_mirror_BRDF = @(angle_diff, sigma) (normpdf(-angle_diff, -15, sigma)/nor
 %blurred_mirror_BRDF = @(angle_diff, margin) (1*(abs(angle_diff+30) <= margin/2));
 
 obs_pos = [0, -5];
-obs_size = 10;
+obs_size = 4;
 gap = 1/obs_size;
 obs_interval = [-45, 45];
 obs = build_obs(obs_pos, obs_size, obs_interval);
@@ -25,21 +25,21 @@ source = build_source(source_pos, source_support_width, source_support_size, sou
 
 [mirr_x, mirr_h, mirr_g, mirr_co] = rendering(obs, source, mirror_BRDF, num_lin, num_ang, margin, gap);
 [x, h, g, co] = rendering(obs, source, blurred_mirror_BRDF, num_lin, num_ang, sigma, gap);
-[h_est, x_est] = fbd(g, 2, co); 
-figure;
-subplot(1, 2, 1);
-stem(h_est);
-subplot(1, 2, 2);
-stem(xcorr(h));
-figure;
-for i=1:obs_size
-    subplot(2, obs_size, i);
-    stem(x_est(:,i));
-end
-for i=1:obs_size
-    subplot(2, obs_size, obs_size + i);
-    stem(mirr_g(i,:));
-end
+% [h_est, x_est] = fbd(g, 2, co); 
+% figure;
+% subplot(1, 2, 1);
+% stem(h_est);
+% subplot(1, 2, 2);
+% stem(xcorr(h));
+% figure;
+% for i=1:obs_size
+%     subplot(2, obs_size, i);
+%     stem(x_est(:,i));
+% end
+% for i=1:obs_size
+%     subplot(2, obs_size, obs_size + i);
+%     stem(mirr_g(i,:));
+% end
 
 function source = build_source(source_pos, source_support_width, source_support_size, source_function)
     source = zeros(source_support_size, 3);

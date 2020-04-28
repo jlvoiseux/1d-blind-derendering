@@ -1,7 +1,7 @@
-function g_est = PhaseRetrieval(g_interf_est, tau, n, sym)
+function g_est = PhaseRetrieval(g_interf_est, tau, n, alpha)
     g_est = rand(tau, n);
     gi = optimvar('gi', tau, n);
-    Xfun = @(gi) computeX(n, g_interf_est, gi);
+    Xfun = @(gi) computeX(n, g_interf_est, gi, alpha);
     Xexp = fcn2optimexpr(Xfun,gi);
     Xprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Xexp);
     Xprob.Constraints.cons1 = gi(:) >= 0;
@@ -11,7 +11,7 @@ function g_est = PhaseRetrieval(g_interf_est, tau, n, sym)
     g_est = Xsol.gi;
 end
 
-function out = computeX(n, g_interf_est, g_est)
+function out = computeX(n, g_interf_est, g_est, alpha)
     X = 0;
     for k=1:n
         for l=1:n
@@ -20,6 +20,7 @@ function out = computeX(n, g_interf_est, g_est)
            X = X + sum(temp_diff);
         end
     end
+    X = X + alpha*norm(g_est, 1);
     out = X;
 end
 

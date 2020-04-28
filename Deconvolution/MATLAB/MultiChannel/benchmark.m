@@ -53,21 +53,31 @@ end
 toc
 % Interferometric rendering using matrix product
 tic
-g5 = zeros(2*num_lin-1, obs_size*obs_size);
 mat_interf = (CreateRenderingMatrixFromBRDFInterf(obs, source, blurred_mirror_BRDF, num_lin, sigma))';
 temp = zeros(2*num_lin-1, source_support_size);
 for k=1:2*source_support_size-1
     temp(:, k) = sum(mat_interf, 2);
 end
-for i=1:obs_size    
-    for j=1:obs_size
-        for k=1:2*source_support_size-1
-            temp(:, k) = mat_interf(:, i) + mat_interf(:, j);
-        end
-        g5(:, get_col_num(i,j, obs_size)) = temp*(xcorr(source(:, 3, i), source(:, 3, j), 'normalized') + xcorr(source(:, 3, j), source(:, 3, i), 'normalized'));
+% for i=1:obs_size    
+%     for j=1:obs_size
+%         g5(:, get_col_num(i,j, obs_size)) = temp*(xcorr(source(:, 3, i), source(:, 3, j), 'normalized') + xcorr(source(:, 3, j), source(:, 3, i), 'normalized'));
+%     end
+% end
+
+g5 = zeros(2*num_lin-1, obs_size*obs_size);
+tic
+mat_interf = CreateRenderingMatrixFromBRDFInterf(obs, source, blurred_mirror_BRDF, num_lin, sigma);
+mat_interf = mat_interf';
+for i=1:obs_size 
+   for j=1:obs_size
+        g5(:, get_col_num(i,j, obs_size)) = mat_interf*(source(:, 3, i) + source(:, 3, j));
     end
 end
 toc
+% In
+
+toc
+
 
 corrtest = xcorr(g0);
 test = zeros(2*num_lin-1, obs_size*obs_size);

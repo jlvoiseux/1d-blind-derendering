@@ -1,14 +1,14 @@
 function [s_est, g_est] = DerenderingPhaseRetrievalMatrix(d_interf, s_est, g_est, T, n, tau, obs, empty_source, num_ang, tol)  
     R1 = inf;
     R2 = inf;    
-    alpha = [0];
+    alpha = 1;
     for i=1:length(alpha)
         deltaR = inf;
         while deltaR > tol
             % 1. Update s
             % 1.1 Optimize W with s
             sa = optimvar('sa', T, tau);
-            Rfun = @(sa) computeR(sa, g_est, d_interf, obs, num_ang, empty_source, T);
+            Rfun = @(sa) computeR(sa, g_est, d_interf, obs, num_ang, empty_source, T, alpha);
             Rexp = fcn2optimexpr(Rfun,sa);
             Rprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Rexp);
             %Rprob.Constraints.cons1 = sa(1:floor(T/2), :) == flip(sa(ceil(T/2)+1:end, :));
@@ -24,7 +24,7 @@ function [s_est, g_est] = DerenderingPhaseRetrievalMatrix(d_interf, s_est, g_est
             % 2. Update g
             % 2.1 Optimize W with g
             gij = optimvar('gij', tau, n);
-            Rfun = @(gij) computeR(s_est, gij, d_interf, obs, num_ang, empty_source, T);
+            Rfun = @(gij) computeR(s_est, gij, d_interf, obs, num_ang, empty_source, T, alpha);
             Rexp = fcn2optimexpr(Rfun,gij);
             Rprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Rexp); 
             Rprob.Constraints.cons1 = gij(:) >= 0;
@@ -41,7 +41,7 @@ function [s_est, g_est] = DerenderingPhaseRetrievalMatrix(d_interf, s_est, g_est
     end
 end
 
-function out = computeR(s_est, g_est, d_interf, obs, num_ang, empty_source, T)
+function out = computeR(s_est, g_est, d_interf, obs, num_ang, empty_source, T, alpha)
     % 1.1.1 Compute V
     res = zeros(T, obs(5));
     for i=1:obs(5)
@@ -50,6 +50,7 @@ function out = computeR(s_est, g_est, d_interf, obs, num_ang, empty_source, T)
     temp_diff = d_interf - xcorr(res);
     temp_diff = temp_diff.*temp_diff;
     R = sum(sum(temp_diff));
+    R = R + alpha*norm(s_est, 1);
     out = R;
 end
 

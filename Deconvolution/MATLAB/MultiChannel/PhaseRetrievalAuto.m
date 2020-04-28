@@ -1,7 +1,8 @@
 function s_est = PhaseRetrievalAuto(s_interf_est, T, tau)
     s_est = rand(T, tau);
+    alpha = 0.01;
     sa = optimvar('sa', T, tau);
-    Xfun = @(sa) computeX(s_interf_est, sa, tau);
+    Xfun = @(sa) computeX(s_interf_est, sa, tau, alpha);
     Xexp = fcn2optimexpr(Xfun,sa);
     Xprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Xexp);
     Xprob.Constraints.cons1 = sa(:) >= 0;
@@ -12,12 +13,13 @@ function s_est = PhaseRetrievalAuto(s_interf_est, T, tau)
     s_est = Xsol.sa;
 end
 
-function out = computeX(s_interf_est, s_est, n)
+function out = computeX(s_interf_est, s_est, n, alpha)
     X = 0;
     for i=1:n
         temp_diff = s_interf_est(:, i) - xcorr(s_est(:, i));
         temp_diff = temp_diff .* temp_diff;
         X = X + sum(temp_diff);
     end   
+    X = X + alpha*norm(s_est, 1);
    out = X;
 end

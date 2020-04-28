@@ -33,11 +33,11 @@ function [x_est, h_est, x_interf_est, h_interf_est] = blind_derendering(d, tau, 
     s_est = zeros(T, 1);
     s_est(round(T/2)) = 1;
     s_interf_est = rand(2*T-1, tau);
-    %s_interf_est = mat_interf;
+    s_interf_est = mat_interf;
     
     g_interf_est = rand(2*tau-1, n*n);
     
-    [s_interf_est, g_interf_est] = FIBD(d_interf, T, n, tau, 5e-3, obs, empty_source, mirror_BRDF, num_lin, margin);
+    %[~, g_interf_est] = FIBD(d_interf, T, n, tau, 5e-3, obs, empty_source, mirror_BRDF, num_lin, margin);
     [s_interf_est, g_interf_est] = DerenderingInterfMatrix(d_interf, s_interf_est, g_interf_est, T, n, tau, obs, empty_source, num_ang, 1e-8);
     g_est = PhaseRetrieval(g_interf_est, tau, n, false);
     s_est = PhaseRetrievalAuto(s_interf_est, T, tau);

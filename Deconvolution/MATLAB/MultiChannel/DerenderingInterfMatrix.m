@@ -2,7 +2,7 @@ function [s_interf_est, g_interf_est] = DerenderingInterfMatrix(d_interf, s_inte
     R1 = inf;
     R2 = inf;
     [temp1, indexes] = PrepFastRenderingInterf(obs, num_ang, empty_source, tau, T);
-    alpha = [1e5];
+    alpha = 10;
     for i = 1:length(alpha)
         deltaR = inf;
         while deltaR > tol
@@ -12,12 +12,12 @@ function [s_interf_est, g_interf_est] = DerenderingInterfMatrix(d_interf, s_inte
             Rfun = @(sa) computeR(sa, g_interf_est, d_interf, obs, num_ang, T, alpha(i), n, tau);
             Rexp = fcn2optimexpr(Rfun,sa);
             Rprob = optimproblem('ObjectiveSense', 'minimize', 'Objective', Rexp);
-            %Rprob.Constraints.cons1 = sa(:, 1) == sa(:, 2);            
-            %Rprob.Constraints.cons2 = sa(1:T-1, :) == flip(sa(T+1:end, :));
+            %Rprob.Constraints.cons1 = sa(T, :) == 1;            
+            Rprob.Constraints.cons2 = sa(1:T-1, :) == flip(sa(T+1:end, :));
             %Rprob.Constraints.cons3 = sa(:, 1) == sa(:, 3); 
             %Rprob.Constraints.cons4 = sa(:) >= 0;
             R0.sa = s_interf_est;            
-            [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fminunc,'Display','iter', 'MaxFunctionEvaluations', 1e5));
+            [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fmincon,'Display','iter', 'MaxFunctionEvaluations', 1e5));
             % 1.2 Assignements
             s_interf_est = abs(Rsol.sa);
             R1p = R1;
@@ -50,22 +50,16 @@ function out = computeR(s_interf_est, g_interf_est, d_interf, obs, num_ang, num_
     for k=1:2*tau-1
         s_temp(:, k) = sum(s_interf_est, 2)/(tau*tau);
     end
-    d_test = zeros(2*num_lin-1, n*n);
-    for i=1:n*n
-        d_test(:, i) = d_interf(:, i).*sum(s_interf_est, 2)/(tau*tau);
-    end
-    for k=1:n
-        for l=1:n
-            temp_diff = d_test(:, get_col_num(k, l, n)) - s_temp*(g_interf_est(:, get_col_num(k, l, n)) + g_interf_est(:, get_col_num(l, k, n)));
-            temp_diff = temp_diff .* temp_diff;
-            R = R + sum(temp_diff);
-        end
-    end
+    d_test = d_interf.*sum(s_interf_est, 2)/(tau*tau);
+    temp_diff = d_test - s_temp*g_interf_est;
+    temp_diff = temp_diff .* temp_diff;
+    R = R + sum(sum(temp_diff));
         
-    g_same = g_interf_est(:, get_col_num(1:n, 1:n, n));
-	t = (-tau+1:tau-1)';
-	Rterm = sum(sum(t.*t.*g_same.*g_same));
-	R = R + alpha*Rterm;    
+%     g_same = g_interf_est(:, get_col_num(1:n, 1:n, n));
+% 	t = (-tau+1:tau-1)';
+% 	Rterm = sum(sum(t.*t.*g_same.*g_same));
+% 	R = R + alpha*Rterm; 
+    R = R + alpha*norm(s_temp, 1);
     out = R;
 end
 
