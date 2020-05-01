@@ -1,11 +1,11 @@
-function [s_est_full, g_est_deflat] = DerenderingStandardMatrixMoveCam(d_full, s_est_full, g_est, T, nmove, nsource, tau, tol)
+function [s_est_full, g_est_deflat] = DerenderingStandardMatrixMoveCamLS(d_full, s_est_full, g_est, T, nmove, nsource, tau, tol)
     g_est_flat = reshape(g_est, [T, tau*nmove]);
     d_full_flat = reshape(d_full, [T, nmove*nsource]);
     ac_mat = buildAutocorrMat(d_full, T, nsource, nmove);
     R1 = inf;
     R2 = inf;
     deltaR = inf;
-    alpha = 1;
+    alpha = 0.1;
     while deltaR > tol
         % 1. Update s
         % 1.1 Optimize W with s
@@ -16,7 +16,7 @@ function [s_est_full, g_est_deflat] = DerenderingStandardMatrixMoveCam(d_full, s
         Rprob.Constraints.cons1 = sa(:) >= 0;
         Rprob.Constraints.cons2 = sa(:) <= 1;
         R0.sa = s_est_full;            
-        [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fmincon,'MaxFunctionEvaluations', 1e5, 'Display', 'iter'));
+        [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@lsqlin,'Display', 'iter'));
         % 1.2 Assignements
         s_est_full = Rsol.sa;
         R1p = R1;
@@ -30,7 +30,7 @@ function [s_est_full, g_est_deflat] = DerenderingStandardMatrixMoveCam(d_full, s
         Rprob.Constraints.cons1 = gij(:) >= 0;
         Rprob.Constraints.cons2 = gij(:) <= 1;
         R0.gij = g_est_flat;            
-        [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fmincon,'MaxFunctionEvaluations', 1e5, 'Display', 'iter', 'UseParallel', false));
+        [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@lsqlin,'Display', 'iter'));
         % 2.2 Assignements
         g_est_flat = Rsol.gij;
         R2p = R2;
@@ -53,8 +53,14 @@ function out = computeR(s_est_full, g_est_flat, d_full_flat, alpha, tau, nmove, 
             temp_diff = temp .* temp;
             R = R + sum(temp_diff);
             if j~=1
-                num = max(ac_mat(j-1, i), 1);
-                R = R + sum(sum(abs(g_est(1:end-num+1, :)-g_est_prev(num:end, :))));                
+                for k=1:tau
+                    num = max(ac_mat(j-1, i), 1);
+                    move_vec = zeros(num, 1);
+                    %conv_vec = [g_est_prev(1:end-num, k); move_vec];
+                    %R = R + alpha*sum(g_est(:, k)-conv_vec);
+                    conv_vec = conv(g_est_prev(:, k), move_vec);
+                    R = R + sum(g_est(:, k)-conv_vec(1:end-num+1));
+                end
             end
             g_est_prev = g_est;
         end

@@ -53,7 +53,7 @@ end
 toc
 % Interferometric rendering using matrix product
 tic
-mat_interf = (CreateRenderingMatrixFromBRDFInterf(obs, source, blurred_mirror_BRDF, num_lin, sigma))';
+mat_sum = sum(mat, 2);
 temp = zeros(2*num_lin-1, source_support_size);
 for k=1:2*source_support_size-1
     temp(:, k) = sum(mat_interf, 2);

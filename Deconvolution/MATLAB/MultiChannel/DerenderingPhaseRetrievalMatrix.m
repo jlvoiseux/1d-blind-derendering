@@ -14,7 +14,7 @@ function [s_est, g_est] = DerenderingPhaseRetrievalMatrix(d_interf, s_est, g_est
             %Rprob.Constraints.cons1 = sa(1:floor(T/2), :) == flip(sa(ceil(T/2)+1:end, :));
             Rprob.Constraints.cons2 = sa(:) >= 0;
             %Rprob.Constraints.cons3 = sa(:) <= 1;
-            Rprob.Constraints.cons4 = sum(sa, 1)./sum(sa(:, 1), 1) == ones(1, tau);
+            %Rprob.Constraints.cons4 = sum(sa, 1)./sum(sa(:, 1), 1) == ones(1, tau);
             R0.sa = s_est;            
             [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fmincon, 'MaxFunctionEvaluations', 1e5));
             % 1.2 Assignements
@@ -35,7 +35,7 @@ function [s_est, g_est] = DerenderingPhaseRetrievalMatrix(d_interf, s_est, g_est
             g_est = Rsol.gij;
             R2p = R2;
             R2 = Rfval;
-            deltaR = max([R1p - R1 R2p - R2]);            
+            deltaR = abs(max([R1p - R1 R2p - R2]));            
             disp(deltaR);
         end
     end

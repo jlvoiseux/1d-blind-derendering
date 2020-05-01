@@ -34,7 +34,7 @@ function [s_est, g_est] = DerenderingStandardMatrix(d, s_est, g_est, T, n, tau, 
         g_est = Rsol.gij;
         R2p = R2;
         R2 = Rfval;
-        deltaR = max([R1p - R1 R2p - R2]);            
+        deltaR = abs(max([R1p - R1 R2p - R2]));            
         disp(deltaR);
     end
 end

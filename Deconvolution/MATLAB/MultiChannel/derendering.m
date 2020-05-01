@@ -1,8 +1,8 @@
 clear all
 close all
 
-num_lin = 50;
-num_ang = 50;
+num_lin = 25;
+num_ang = 25;
 margin = 2;
 mirror_BRDF = @(angle_diff, margin) (1*(abs(angle_diff) <= margin/2));
 sigma = 1;
@@ -20,6 +20,7 @@ source_support_size = 4;
 [empty_source, ~] = build_source(source_pos, source_support_width, source_support_size, obs_size, true);
 
 [x, h, g] = FullRendering(obs, source, blurred_mirror_BRDF, num_lin, num_ang, sigma);
+mat_res = CreateRenderingMatrixFromBRDF(obs, source, blurred_mirror_BRDF, num_lin, sigma);
 mat_interf = (CreateRenderingMatrixFromBRDFInterf(obs, source, blurred_mirror_BRDF, num_lin, sigma))';
 [x_est, h_est, x_interf_est, h_interf_est] = blind_derendering(g, source_support_size, obs, empty_source, num_ang, num_lin, mirror_BRDF, margin, mat_interf);
 
@@ -30,7 +31,7 @@ function [x_est, h_est, x_interf_est, h_interf_est] = blind_derendering(d, tau, 
     d_interf = xcorr(d, 'normalize');
     
     g_est = rand(tau, n);
-    s_est = zeros(T, 1);
+    s_est = zeros(T, tau);
     s_est(round(T/2)) = 1;
     s_interf_est = rand(2*T-1, tau);
     s_interf_est = mat_interf;
@@ -38,10 +39,10 @@ function [x_est, h_est, x_interf_est, h_interf_est] = blind_derendering(d, tau, 
     g_interf_est = rand(2*tau-1, n*n);
     
     %[~, g_interf_est] = FIBD(d_interf, T, n, tau, 5e-3, obs, empty_source, mirror_BRDF, num_lin, margin);
-    [s_interf_est, g_interf_est] = DerenderingInterfMatrix(d_interf, s_interf_est, g_interf_est, T, n, tau, obs, empty_source, num_ang, 1e-8);
-    g_est = PhaseRetrieval(g_interf_est, tau, n, false);
-    s_est = PhaseRetrievalAuto(s_interf_est, T, tau);
-    [s_est, g_est] = DerenderingPhaseRetrievalMatrix(d_interf, s_est, g_est, T, n, tau, obs, empty_source, num_ang, 1e-3);
+    %[s_interf_est, g_interf_est] = DerenderingInterfMatrix(d_interf, s_interf_est, g_interf_est, T, n, tau, obs, empty_source, num_ang, 1e-8);
+    %g_est = PhaseRetrieval(g_interf_est, tau, n, false);
+    %s_est = PhaseRetrievalAuto(s_interf_est, T, tau);
+    [s_est, g_est] = DerenderingPhaseRetrievalMatrix(d_interf, [d(:, 1), d(:, 1), d(:, 1), d(:, 1)], g_est, T, n, tau, obs, empty_source, num_ang, 1e-3);
     [s_est, g_est] = DerenderingStandardMatrix(d, s_est, g_est, T, n, tau, obs, empty_source, num_ang, 1e-8);
     for i=1:n
         g_est(:, i) = g_est(:, i)./max(g_est(:, i));
