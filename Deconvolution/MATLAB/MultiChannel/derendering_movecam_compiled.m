@@ -1,47 +1,42 @@
 clear all
 close all
 
-num_lin = 100;
-num_ang = 25;
-margin = 2;
-mirror_BRDF = @(angle_diff, margin) (1*(abs(angle_diff) <= margin/2));
+num_lin = input("Number of wall sample points : ");
 sigma = 1;
 blurred_mirror_BRDF = @(angle_diff, sigma) (normpdf(-angle_diff, -15, sigma)/normpdf(0, 0, sigma)  +  normpdf(-angle_diff, 15, sigma)/normpdf(0, 0, sigma) + normpdf(-angle_diff, -35, sigma)/normpdf(0, 0, sigma)  +  normpdf(-angle_diff, 35, sigma)/normpdf(0, 0, sigma));
 
 obs_pos = [0, -5];
-obs_size_move = 20;
-obs_size_source = 20;
+obs_size_move = input("Number of camera moves : ");
+obs_size_source = input("Number of sources : ");
 obs_interval = [-45, 45];
 obs = build_obs(obs_pos, obs_size_move, obs_size_source, obs_interval);
 
 source_pos = [0, -5];
 source_support_width = 10;
-source_support_size = 4;
+source_support_size = input("Number of points by source : ");
 [source, interf_test] = build_source(source_pos, source_support_width, source_support_size, obs_size_source, false);
-[empty_source, ~] = build_source(source_pos, source_support_width, source_support_size, 1, true);
 
-[x_axis, mat] = CreateRenderingMatrixFromBRDFMoveCam(obs, source, blurred_mirror_BRDF, num_lin, sigma, 0.5);
+prop = input("Move proportion (default : 0.5) : ");
+[x_axis, mat] = CreateRenderingMatrixFromBRDFMoveCam(obs, source, blurred_mirror_BRDF, num_lin, sigma, prop);
 g = zeros(num_lin, obs_size_move, obs_size_source);
 
 for i=1:obs_size_source
-    %figure;
     for j=1:obs_size_move
         A = mat(:, :, j);
         x = source(:, 3, i);
         y = A*x;
-        g(:, j, i) = y;
-        %subplot(1, obs_size_move, j);
-        %stem(flip(x_axis(:, obs_size_move-j+1)), g(:, j, i));        
+        g(:, j, i) = y;       
     end
 end
-g_test = reshape(g(:, :, 1), [num_lin, obs_size_move]);
 
-% obs(5) = 1;
-% [x, h, g_verif] = FullRendering(obs, source, blurred_mirror_BRDF, num_lin, num_ang, sigma);
-% figure;
-% stem(g_verif);
+disp("Rendering done.");
 
-[x_est, h_est] = blind_derendering(g, source_support_size, source, mat);
+tol = input("Covergence tolerance : ");
+alpha = input("L1 regularization coefficient (default : 1) : ");
+useParallel = input("Use parallel optimization (default : false) : ");
+
+disp("Starting de-rendering");
+[x_est, h_est, h_est_flat] = blind_derendering(g, source_support_size, tol, alpha, useParallel);
 figure;
 for i=1:obs_size_move
     subplot(2, obs_size_move, i);
@@ -50,42 +45,28 @@ for i=1:obs_size_move
     imagesc(mat(:, :, i));
 end
 
+disp("De-rendering done. Writing output :");
+save("derendering.mat")
 
-function [x_est, h_est] = blind_derendering(d_full, tau, source, mat)
+
+function [x_est, h_est, h_est_flat] = blind_derendering(d_full, tau, tol, alpha, useParallel)
     T = length(d_full(:, 1, 1));
     nmove = length(d_full(1, :, 1));
     nsource = length(d_full(1, 1, :));
-    mat_flat = reshape(mat, [T, tau*nmove]);
-    %d_interf = xcorr(d, 'normalize');
-    d_interf = zeros(2*T-1, nmove*nmove, nsource);
-    for i=1:nsource
-        d_interf(:, :, i) = xcorr(d_full(:, :, i));
-    end
     g_est = zeros(T, tau, nmove);
     for i=1:tau
         for j=1:nmove
             mm = mean(d_full, 3);
             g_est(:, i, j) = mm(:, j);
         end
-    end
-    
+    end    
     s_est_full = rand(tau, nsource);
-    %s_est_full = reshape(source(:, 3, :), [tau, nsource]);
-    %s_est(round(tau/2)) = 1;
-    s_interf_est = rand(2*T-1, tau);
-    %s_interf_est = mat_interf;
+
     
-    %[g_cov, s_est_full] = EstimateSourceMoveCam(d_full, s_est_full, g_est, T, nmove, nsource, tau, 1e-8);   
-    [s_est_full, g_est, g_est_flat] = DerenderingStandardMatrixMoveCamOptim(d_full, s_est_full, g_est, T, nmove, nsource, tau, 1e-8);
-    %s_est = s_est./max(s_est);
-    
-    figure;
-    subplot(1, 2, 1);
-    imagesc(mat_flat);
-    subplot(1, 2, 2);
-    imagesc(g_est_flat);
+    [s_est_full, g_est, g_est_flat] = DerenderingStandardMatrixMoveCamGeneticComp(d_full, s_est_full, g_est, T, nmove, nsource, tau, tol, alpha, useParallel);   
     
     h_est = g_est;    
+    h_est_flat = g_est_flat;
     x_est = s_est_full;
 end
 

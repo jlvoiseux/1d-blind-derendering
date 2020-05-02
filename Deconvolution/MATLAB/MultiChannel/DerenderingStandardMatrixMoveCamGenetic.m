@@ -8,6 +8,8 @@ function [s_est_full, g_est_deflat, g_est_flat] = DerenderingStandardMatrixMoveC
     deltaR = inf;
     alpha = 1;
     g_est_opt = buildOptFromFlat(g_est_flat, T, nmove, tau, ac_mat);
+    figure;
+    imagesc(g_est_flat);
     while deltaR > tol
         % 1. Update g
         % 1.1 Optimize W with g         
@@ -94,7 +96,7 @@ function [s_est_full, g_est_deflat, g_est_flat] = DerenderingStandardMatrixMoveC
         R0.sa = s_est_full;            
         [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fmincon,'MaxFunctionEvaluations', 1e5, 'Display', 'iter', 'Algorithm', 'sqp'));
         % 1.2 Assignements
-        s_est_full = Rsol.sa;
+        %s_est_full = Rsol.sa;
         R1p = R1;
         R1 = Rfval;
         deltaR = max([R1p - R1 R2p - R2]);            
@@ -170,36 +172,55 @@ function out = buildAutocorrMat(d_full, T, nsource, nmove)
 end
 
 function out = buildOptFromFlat(g_est_flat, T, nmove, tau, ac_mat)    
-    length_util = sum(ac_mat > 0);
-    out = zeros(T+sum(ac_mat)-length_util, tau);
-    for j=1:nmove
+    out = zeros(T+sum(ac_mat)+length(ac_mat), tau);
+    init = round(nmove/2);
+    num = round(mean(ac_mat));
+    for j=init:nmove
         g_est = g_est_flat(:, 1+(j-1)*tau:j*tau);
-        if j==1
+        if j==init
             out(1:T, :) = g_est;
             curr_ind = T+1;
         else
-            num = ac_mat(j-1);
-            out(curr_ind:curr_ind+num, :) = g_est(end-num:end, :);
-            curr_ind = curr_ind+num+1;
+            %num = ac_mat(j-1);
+            out(curr_ind:curr_ind+num-1, :) = g_est(end-num+1:end, :);
+            curr_ind = curr_ind+num;
         end
+    end
+    for j=init-1:-1:1
+        g_est = g_est_flat(:, 1+(j-1)*tau:j*tau);
+        %num = ac_mat(j);
+        out(curr_ind:curr_ind+num-1, :) = g_est(1:num, :);
+        curr_ind = curr_ind+num;
     end
 end
 
 function out = buildFlatFromOpt(g_est_opt, T, nmove, tau, ac_mat)
     out = zeros(T, tau*nmove);
-    for j=1:nmove        
-        if j==1
+    init = round(nmove/2);
+    num = round(mean(ac_mat));
+    for j=init:nmove        
+        if j==init
             out(:, 1+(j-1)*tau:j*tau) = g_est_opt(1:T, :);
             g_prev = g_est_opt(1:T, :);
             curr_ind = T+1;
         else
-            num = ac_mat(j-1);
+            %num = ac_mat(j-1);
             g_est = zeros(T, tau);
             g_est(1:end-num, :) = g_prev(num+1:end, :);
-            g_est(end-num:end, :) = g_est_opt(curr_ind:curr_ind+num, :);
+            g_est(end-num+1:end, :) = g_est_opt(curr_ind:curr_ind+num-1, :);
             out(:, 1+(j-1)*tau:j*tau) = g_est;
             g_prev = g_est;
-            curr_ind = curr_ind+num+1;
+            curr_ind = curr_ind+num;
         end
+    end
+    g_prev = g_est_opt(1:T, :);
+    for j=init-1:-1:1
+        %num = ac_mat(j);
+        g_est = zeros(T, tau);
+        g_est(num+1:end, :) = g_prev(1:end-num, :);
+        g_est(1:num, :) = g_est_opt(curr_ind:curr_ind+num-1, :);
+        out(:, 1+(j-1)*tau:j*tau) = g_est;
+        g_prev = g_est;
+        curr_ind = curr_ind+num;
     end
 end

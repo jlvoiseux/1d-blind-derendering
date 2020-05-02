@@ -1,7 +1,7 @@
 clear all
 close all
 
-num_lin = 50;
+num_lin = 4;
 num_ang = 25;
 margin = 2;
 mirror_BRDF = @(angle_diff, margin) (1*(abs(angle_diff) <= margin/2));
@@ -9,8 +9,8 @@ sigma = 1;
 blurred_mirror_BRDF = @(angle_diff, sigma) (normpdf(-angle_diff, -15, sigma)/normpdf(0, 0, sigma)  +  normpdf(-angle_diff, 15, sigma)/normpdf(0, 0, sigma) + normpdf(-angle_diff, -35, sigma)/normpdf(0, 0, sigma)  +  normpdf(-angle_diff, 35, sigma)/normpdf(0, 0, sigma));
 
 obs_pos = [0, -5];
-obs_size_move = 10;
-obs_size_source = 10;
+obs_size_move = 40;
+obs_size_source = 40;
 obs_interval = [-45, 45];
 obs = build_obs(obs_pos, obs_size_move, obs_size_source, obs_interval);
 
@@ -76,7 +76,7 @@ function [x_est, h_est] = blind_derendering(d_full, tau, source, mat)
     %s_interf_est = mat_interf;
     
     %[g_cov, s_est_full] = EstimateSourceMoveCam(d_full, s_est_full, g_est, T, nmove, nsource, tau, 1e-8);   
-    [s_est_full, g_est, g_est_flat] = DerenderingStandardMatrixMoveCamGenetic(d_full, s_est_full, g_est, T, nmove, nsource, tau, 1e-3);
+    [s_est_full, g_est, g_est_flat] = DerenderingStandardMatrixMoveCamGenetic(d_full, s_est_full, mat, T, nmove, nsource, tau, 1e-3);
     %s_est = s_est./max(s_est);
     
     figure;
