@@ -1,6 +1,6 @@
 function [s_est_full, g_est_deflat, g_est_flat] = DerenderingStandardMatrixMoveCamGeneticComp(d_full, s_est_full, g_est, T, nmove, nsource, tau, tol, alpha, useParallel)
     g_est_flat = reshape(g_est, [T, tau*nmove]);
-    d_full_flat = reshape(d_full, [T, nmove*nsource]);
+    d_full_flat = reshape(d_full, [T, nsource*nmove]);
     ac_mat = buildAutocorrMat(d_full, T, nsource, nmove);
     ac_mat = round(mean(ac_mat, 2));
     R1 = inf;
@@ -17,7 +17,7 @@ function [s_est_full, g_est_deflat, g_est_flat] = DerenderingStandardMatrixMoveC
         Rprob.Constraints.cons1 = gij(:) >= 0;
         Rprob.Constraints.cons2 = gij(:) <= 1;
         R0.gij = g_est_opt;            
-        [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fmincon,'MaxFunctionEvaluations', 2e5, 'Display', 'iter', 'UseParallel', useParallel, 'Algorithm', 'sqp'));
+        [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fmincon,'MaxFunctionEvaluations', 2e5, 'Display', 'iter', 'UseParallel', false, 'Algorithm', 'sqp'));
         % 2.2 Assignements
         g_est_opt = Rsol.gij;
         R2p = R2;
@@ -77,7 +77,7 @@ function [s_est_full, g_est_deflat, g_est_flat] = DerenderingStandardMatrixMoveC
         Rprob.Constraints.cons1 = gij(:) >= 0;
         Rprob.Constraints.cons2 = gij(:) <= 1;
         R0.gij = g_est_flat;            
-        [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fmincon,'MaxFunctionEvaluations', 1e6, 'Display', 'iter', 'UseParallel', useParallel, 'Algorithm', 'sqp'));
+        [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fmincon,'MaxFunctionEvaluations', 2e5, 'Display', 'iter', 'UseParallel', true, 'Algorithm', 'sqp'));
         % 2.2 Assignements
         g_est_flat = Rsol.gij;
         R2p = R2;
@@ -93,7 +93,7 @@ function [s_est_full, g_est_deflat, g_est_flat] = DerenderingStandardMatrixMoveC
         R0.sa = s_est_full;            
         [Rsol,Rfval,~,~] = solve(Rprob,R0,'Options', optimoptions(@fmincon,'MaxFunctionEvaluations', 1e5, 'Display', 'iter', 'Algorithm', 'sqp'));
         % 1.2 Assignements
-        %s_est_full = Rsol.sa;
+        s_est_full = Rsol.sa;
         R1p = R1;
         R1 = Rfval;
         deltaR = max([R1p - R1 R2p - R2]);            
@@ -106,16 +106,13 @@ end
 function out = computeROpt(s_est_full, g_est_opt, d_full_flat, alpha, tau, nmove, nsource, ac_mat, T)
     % 1.1.1 Compute V
     R = 0;
-    g_est_flat = buildFlatFromOpt(g_est_opt, T, nmove, tau, ac_mat);
-    for i=1:nsource
-        s_est = s_est_full(:, i);
-        d = d_full_flat(:, 1+(i-1)*nmove:i*nmove);
-        for j=1:nmove
-            g_est = g_est_flat(:, 1+(j-1)*tau:j*tau);
-            temp = d(:, j) - g_est*s_est;
-            temp_diff = temp .* temp;
-            R = R + sum(temp_diff);
-        end
+    g_est_flat = buildFlatFromOpt(g_est_opt, T, nmove, tau, ac_mat);    
+    for j=1:nmove
+        d = d_full_flat(:, 1+(j-1)*nsource:j*nsource);
+        g_est = g_est_flat(:, 1+(j-1)*tau:j*tau);
+        temp = d - g_est*s_est_full;
+        temp_diff = temp .* temp;
+        R = R + sum(sum(temp_diff));
     end
     R = R + alpha*norm(g_est_opt, 1);
     out = R;
@@ -127,15 +124,12 @@ function out = computeROptG(s_line, g_line, d_full_flat, alpha, tau, nmove, nsou
     g_est_opt = reshape(g_line, [length(g_line)/tau, tau]);
     s_est_full = reshape(s_line, [tau, nsource]);
     g_est_flat = buildFlatFromOpt(g_est_opt, T, nmove, tau, ac_mat);
-    for i=1:nsource
-        s_est = s_est_full(:, i);
-        d = d_full_flat(:, 1+(i-1)*nmove:i*nmove);
-        for j=1:nmove
-            g_est = g_est_flat(:, 1+(j-1)*tau:j*tau);
-            temp = d(:, j) - g_est*s_est;
-            temp_diff = temp .* temp;
-            R = R + sum(temp_diff);
-        end
+    for j=1:nmove
+        d = d_full_flat(:, 1+(j-1)*nsource:j*nsource);
+        g_est = g_est_flat(:, 1+(j-1)*tau:j*tau);
+        temp = d - g_est*s_est_full;
+        temp_diff = temp .* temp;
+        R = R + sum(sum(temp_diff));
     end
     R = R + alpha*norm(g_est_opt, 1);
     out = R;
@@ -144,15 +138,12 @@ end
 function out = computeR(s_est_full, g_est_flat, d_full_flat, alpha, tau, nmove, nsource)
     % 1.1.1 Compute V
     R = 0;
-    for i=1:nsource
-        s_est = s_est_full(:, i);
-        d = d_full_flat(:, 1+(i-1)*nmove:i*nmove);
-        for j=1:nmove
-            g_est = g_est_flat(:, 1+(j-1)*tau:j*tau);
-            temp = d(:, j) - g_est*s_est;
-            temp_diff = temp .* temp;
-            R = R + sum(temp_diff);            
-        end
+    for j=1:nmove
+        d = d_full_flat(:, 1+(j-1)*nsource:j*nsource);
+        g_est = g_est_flat(:, 1+(j-1)*tau:j*tau);
+        temp = d - g_est*s_est_full;
+        temp_diff = temp .* temp;
+        R = R + sum(sum(temp_diff));
     end
     R = R + alpha*norm(g_est_flat, 1);
     out = R;
@@ -162,7 +153,7 @@ function out = buildAutocorrMat(d_full, T, nsource, nmove)
     out = zeros(nmove-1, nsource);
     for i=1:nsource
         for j=2:nmove
-            [~, ind] = max(xcorr(d_full(:, j-1, i), d_full(:, j, i)));
+            [~, ind] = max(xcorr(d_full(:, i, j-1), d_full(:, i, j)));
             out(j-1, i) = max(0, ind-T);
         end
     end

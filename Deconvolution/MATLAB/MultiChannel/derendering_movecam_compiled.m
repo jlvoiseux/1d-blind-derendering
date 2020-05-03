@@ -18,15 +18,13 @@ source_support_size = input("Number of points by source : ");
 
 prop = input("Move proportion (default : 0.5) : ");
 [x_axis, mat] = CreateRenderingMatrixFromBRDFMoveCam(obs, source, blurred_mirror_BRDF, num_lin, sigma, prop);
-g = zeros(num_lin, obs_size_move, obs_size_source);
+g = zeros(num_lin, obs_size_source, obs_size_move);
 
-for i=1:obs_size_source
-    for j=1:obs_size_move
-        A = mat(:, :, j);
-        x = source(:, 3, i);
-        y = A*x;
-        g(:, j, i) = y;       
-    end
+x = reshape(source(:, 3, :),[source_support_size, obs_size_source]);
+for j=1:obs_size_move
+    A = mat(:, :, j);    
+    y = A*x;
+    g(:, :, j) = y;       
 end
 
 disp("Rendering done.");
@@ -51,12 +49,12 @@ save("derendering.mat")
 
 function [x_est, h_est, h_est_flat] = blind_derendering(d_full, tau, tol, alpha, useParallel)
     T = length(d_full(:, 1, 1));
-    nmove = length(d_full(1, :, 1));
-    nsource = length(d_full(1, 1, :));
+    nmove = length(d_full(1, 1, :));
+    nsource = length(d_full(1, :, 1));
     g_est = zeros(T, tau, nmove);
     for i=1:tau
         for j=1:nmove
-            mm = mean(d_full, 3);
+            mm = mean(d_full, 2);
             g_est(:, i, j) = mm(:, j);
         end
     end    

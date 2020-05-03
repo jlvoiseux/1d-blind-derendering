@@ -11,21 +11,19 @@ function [errx, errh] = DerenderingWrapper(num_lin, obs_size_move, obs_size_sour
     [source, interf_test] = build_source(source_pos, source_support_width, source_support_size, obs_size_source, false);
 
     [x_axis, mat] = CreateRenderingMatrixFromBRDFMoveCam(obs, source, blurred_mirror_BRDF, num_lin, sigma, prop);
-    g = zeros(num_lin, obs_size_move, obs_size_source);
+    g = zeros(num_lin, obs_size_source, obs_size_move);
 
-    for i=1:obs_size_source
-        for j=1:obs_size_move
-            A = mat(:, :, j);
-            x = source(:, 3, i);
-            y = A*x;
-            g(:, j, i) = y;       
-        end
+    x = reshape(source(:, 3, :),[source_support_size, obs_size_source]);
+    for j=1:obs_size_move
+        A = mat(:, :, j);    
+        y = A*x;
+        g(:, :, j) = y;       
     end
 
     disp("Rendering done.");
 
     disp("Starting de-rendering");
-    [x_est, h_est, h_est_flat] = blind_derendering(g, source_support_size, tol, alpha, false);
+    [x_est, h_est, h_est_flat] = blind_derendering(g, source_support_size, tol, alpha, true);
 
     errx = immse(reshape(source(:, 3, :),[source_support_size, obs_size_source]), x_est);
     errh = immse(h_est, mat);
