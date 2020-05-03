@@ -15,6 +15,8 @@ source_pos = [0, -5];
 source_support_width = 10;
 source_support_size = input("Number of points by source : ");
 [source, interf_test] = build_source(source_pos, source_support_width, source_support_size, obs_size_source, false);
+%[source, interf_test] = build_ordered_source(source_pos, source_support_width, source_support_size, obs_size_source, false);
+x_true = reshape(source(:, 3, :),[source_support_size, obs_size_source]);
 
 prop = input("Move proportion (default : 0.5) : ");
 [x_axis, mat] = CreateRenderingMatrixFromBRDFMoveCam(obs, source, blurred_mirror_BRDF, num_lin, sigma, prop);
@@ -31,10 +33,11 @@ disp("Rendering done.");
 
 tol = input("Covergence tolerance : ");
 alpha = input("L1 regularization coefficient (default : 1) : ");
+beta = input("Autocorr regularization coefficient (default : 0.01) : ");
 useParallel = input("Use parallel optimization (default : false) : ");
 
 disp("Starting de-rendering");
-[x_est, h_est, h_est_flat] = blind_derendering(g, source_support_size, tol, alpha, useParallel);
+[x_est, h_est, h_est_flat] = blind_derendering(g, source_support_size, tol, alpha, beta, useParallel, 'iter');
 figure;
 for i=1:obs_size_move
     subplot(2, obs_size_move, i);
@@ -46,8 +49,7 @@ end
 disp("De-rendering done. Writing output :");
 save("derendering.mat")
 
-
-function [x_est, h_est, h_est_flat] = blind_derendering(d_full, tau, tol, alpha, useParallel)
+function [x_est, h_est, h_est_flat] = blind_derendering(d_full, tau, tol, alpha, beta, useParallel, doDisplay)
     T = length(d_full(:, 1, 1));
     nmove = length(d_full(1, 1, :));
     nsource = length(d_full(1, :, 1));
@@ -61,11 +63,24 @@ function [x_est, h_est, h_est_flat] = blind_derendering(d_full, tau, tol, alpha,
     s_est_full = rand(tau, nsource);
 
     
-    [s_est_full, g_est, g_est_flat] = DerenderingStandardMatrixMoveCamGeneticComp(d_full, s_est_full, g_est, T, nmove, nsource, tau, tol, alpha, useParallel);   
+    [s_est_full, g_est, g_est_flat] = DerenderingStandardMatrixMoveCamCascade(d_full, s_est_full, g_est, T, nmove, nsource, tau, tol, alpha, beta, useParallel, doDisplay);   
     
-    h_est = g_est;    
-    h_est_flat = g_est_flat;
-    x_est = s_est_full;
+    reorder_vec = zeros(1,tau);
+    for i=1:tau
+        reorder_vec(i) = length(find(g_est(:, i, 1) < 0.1));
+    end
+    [~, idx] = sort(reorder_vec);
+    
+    h_est = zeros(size(g_est));
+    h_est_flat = zeros(size(g_est_flat));
+    x_est = zeros(size(s_est_full));
+    
+    for i=1:tau
+        x_est(idx(i), :) = s_est_full(i, :);
+        h_est_flat(:, idx(i):tau:end) = g_est_flat(:, i:tau:end);
+        h_est(:, idx(i), :) = g_est(:, i, :);
+    end
+
 end
 
 function [source, interf_test] = build_source(source_pos, source_support_width, source_support_size, obs_size, isempty)
@@ -82,6 +97,44 @@ function [source, interf_test] = build_source(source_pos, source_support_width, 
                 val = 1;
             else
                 val = rand();
+            end            
+            source(j, :, i) = [source_pos(1)+x_axis(j), source_pos(2), val];
+            interf_test_prep(j, i) = val;
+        end
+%         if ~isempty
+%             source(:, 3, i) = 0.9*source(:, 3, i);
+%             ind = randi(source_support_size);
+%             source(ind, 3, i) = 1;
+%         end
+    end
+    interf_test = xcorr(interf_test_prep);
+end
+
+function [source, interf_test] = build_ordered_source(source_pos, source_support_width, source_support_size, obs_size, isempty)
+    source = zeros(source_support_size, 3, obs_size);
+    interf_test_prep = zeros(source_support_size, obs_size);
+    if(source_support_size == 1)
+        x_axis = zeros(1, 1);
+    else
+        x_axis = linspace(-source_support_width/2, source_support_width/2, source_support_size);
+    end
+    for i=1:obs_size
+        prev_val = 0;
+        for j=1:source_support_size
+            if isempty
+                val = 1;
+            else
+                if j==1
+                    mnval = 0.5;
+                    mxval = 1;
+                    val = mnval + rand*(mxval-mnval);
+                    prev_val = val;
+                else
+                    mnval = 10^(-j+1);
+                    mxval = prev_val;
+                    val = mnval + rand*(mxval-mnval);
+                    prev_val = val;
+                end
             end            
             source(j, :, i) = [source_pos(1)+x_axis(j), source_pos(2), val];
             interf_test_prep(j, i) = val;
