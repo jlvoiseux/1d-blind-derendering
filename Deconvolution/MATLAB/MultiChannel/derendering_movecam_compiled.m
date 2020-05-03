@@ -15,7 +15,6 @@ source_pos = [0, -5];
 source_support_width = 10;
 source_support_size = input("Number of points by source : ");
 [source, interf_test] = build_source(source_pos, source_support_width, source_support_size, obs_size_source, false);
-%[source, interf_test] = build_ordered_source(source_pos, source_support_width, source_support_size, obs_size_source, false);
 x_true = reshape(source(:, 3, :),[source_support_size, obs_size_source]);
 
 prop = input("Move proportion (default : 0.5) : ");
@@ -67,7 +66,7 @@ function [x_est, h_est, h_est_flat] = blind_derendering(d_full, tau, tol, alpha,
     
     reorder_vec = zeros(1,tau);
     for i=1:tau
-        reorder_vec(i) = length(find(g_est(:, i, 1) < 0.1));
+        reorder_vec(i) = mean(g_est(:, i, 1), 1);
     end
     [~, idx] = sort(reorder_vec);
     
@@ -97,44 +96,6 @@ function [source, interf_test] = build_source(source_pos, source_support_width, 
                 val = 1;
             else
                 val = rand();
-            end            
-            source(j, :, i) = [source_pos(1)+x_axis(j), source_pos(2), val];
-            interf_test_prep(j, i) = val;
-        end
-%         if ~isempty
-%             source(:, 3, i) = 0.9*source(:, 3, i);
-%             ind = randi(source_support_size);
-%             source(ind, 3, i) = 1;
-%         end
-    end
-    interf_test = xcorr(interf_test_prep);
-end
-
-function [source, interf_test] = build_ordered_source(source_pos, source_support_width, source_support_size, obs_size, isempty)
-    source = zeros(source_support_size, 3, obs_size);
-    interf_test_prep = zeros(source_support_size, obs_size);
-    if(source_support_size == 1)
-        x_axis = zeros(1, 1);
-    else
-        x_axis = linspace(-source_support_width/2, source_support_width/2, source_support_size);
-    end
-    for i=1:obs_size
-        prev_val = 0;
-        for j=1:source_support_size
-            if isempty
-                val = 1;
-            else
-                if j==1
-                    mnval = 0.5;
-                    mxval = 1;
-                    val = mnval + rand*(mxval-mnval);
-                    prev_val = val;
-                else
-                    mnval = 10^(-j+1);
-                    mxval = prev_val;
-                    val = mnval + rand*(mxval-mnval);
-                    prev_val = val;
-                end
             end            
             source(j, :, i) = [source_pos(1)+x_axis(j), source_pos(2), val];
             interf_test_prep(j, i) = val;
