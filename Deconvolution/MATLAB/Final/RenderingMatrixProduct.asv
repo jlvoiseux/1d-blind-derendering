@@ -1,0 +1,3 @@
+function out = RenderingMatrixProduct(s, brdf_mat, n, k)
+end
+
