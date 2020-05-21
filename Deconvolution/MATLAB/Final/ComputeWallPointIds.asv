@@ -1,0 +1,8 @@
+function out = ComputeWallPointIds(wall_points)
+    out = zeros(size(wall_points));
+    nmove = size(wall_points, 1);
+    init = round(nmove/2);
+    for j=init:nmove
+    end
+end
+

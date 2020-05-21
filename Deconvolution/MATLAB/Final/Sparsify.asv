@@ -1,0 +1,5 @@
+function [out, indices] = Sparsify(mat, prop)
+    k = round(prop*numel(mat));
+    [~, ind] = maxk(mat, k);
+end
+

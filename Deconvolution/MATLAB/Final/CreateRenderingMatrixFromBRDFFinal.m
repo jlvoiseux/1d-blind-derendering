@@ -7,8 +7,7 @@ function [wall_points, out] = CreateRenderingMatrixFromBRDFFinal(obs, source, br
 
     wall_points = ComputeWallPoints(obs, T, n);    
     
-    for i=1:n
-        
+    for i=1:n        
         normal = [wall_points(i, :); -1*ones(1, T)] - [wall_points(i, :); zeros(1, T)];
         dir_out = [obs(1)*ones(1, T); obs(2)*ones(1, T)] - [wall_points(i, :); zeros(1, T)];
         angle_out = atan2d(normal(1, :).*dir_out(2, :)-normal(2, :).*dir_out(1, :), normal(1, :).*dir_out(1, :)+normal(2, :).*dir_out(2, :)); 
