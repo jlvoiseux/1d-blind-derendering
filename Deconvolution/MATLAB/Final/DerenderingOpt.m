@@ -1,4 +1,4 @@
-function [s_est, brdf_est] = DerenderingOpt(g, s_est, brdf_est, T, nmove, nsource, tau, tol, alpha, wall_points, wall_points_ids, doDisplay, propSparse)
+function [s_est, brdf_est] = DerenderingOpt(g, s_est, brdf_est, T, nmove, nsource, tau, tol, alpha, wall_points, wall_points_ids, doDisplay, propSparse, maxCount)
 
     brdf_est_flat = Flatten(brdf_est);
     g_flat = Flatten(g);
@@ -9,8 +9,8 @@ function [s_est, brdf_est] = DerenderingOpt(g, s_est, brdf_est, T, nmove, nsourc
     [brdf_est_sparse, brdf_est_sparse_indices] = Sparsify(brdf_est_opt, propSparse);
     brdf_est_dim1 = size(brdf_est_opt, 1);
     brdf_est_dim2 = size(brdf_est_opt, 2);
-    
-    while deltaR > tol        
+    count = 0;
+    while deltaR > tol && count < maxCount        
         % 1. Update s
         % 1.1 Optimize W with s
         sa = optimvar('sa', tau, nsource);
@@ -41,6 +41,7 @@ function [s_est, brdf_est] = DerenderingOpt(g, s_est, brdf_est, T, nmove, nsourc
         R2 = Rfval;                     
         deltaR = max([R1p - R1 R2p - R2]);            
         disp(deltaR);
+        count = count + 1;
     end
     brdf_est_opt = UnSparsify(brdf_est_sparse, brdf_est_sparse_indices, brdf_est_dim1, brdf_est_dim2);
     brdf_est_flat = BuildFlatFromOpt(brdf_est_opt, T, nmove, tau, wall_points, wall_points_ids);

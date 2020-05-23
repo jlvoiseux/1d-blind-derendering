@@ -1,4 +1,4 @@
-function [s_est_full, g_est_deflat, g_est_flat] = DerenderingStandardMatrixMoveCamGenetic(d_full, s_est_full, g_est, T, nmove, nsource, tau, tol)
+function [s_est_full, g_est_deflat, g_est_flat] = DerenderingStandardMatrixMoveCamGenetic(d_full, s_est_full, g_est, T, nmove, nsource, tau, tol, maxCount)
     g_est_flat = reshape(g_est, [T, tau*nmove]);
     d_full_flat = reshape(d_full, [T, nmove*nsource]);
     ac_mat = buildAutocorrMat(d_full, T, nsource, nmove);
@@ -10,7 +10,8 @@ function [s_est_full, g_est_deflat, g_est_flat] = DerenderingStandardMatrixMoveC
     g_est_opt = buildOptFromFlat(g_est_flat, T, nmove, tau, ac_mat);
     figure;
     imagesc(g_est_flat);
-    while deltaR > tol
+    count = 0
+    while deltaR > tol && count < maxCount;
         % 1. Update g
         % 1.1 Optimize W with g         
         gij = optimvar('gij', size(g_est_opt, 1), tau);
@@ -41,6 +42,7 @@ function [s_est_full, g_est_deflat, g_est_flat] = DerenderingStandardMatrixMoveC
         R1 = Rfval;              
         deltaR = max([R1p - R1 R2p - R2]);            
         disp(deltaR);
+        count = count+1;
     end
     deltaR = inf;
     R1 = inf;

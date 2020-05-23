@@ -10,6 +10,6 @@ function out = ComputeROpt(s_est, brdf_est_sparse, brdf_est_sparse_indices, brdf
         temp_diff = temp .* temp;
         R = R + sum(sum(temp_diff));
     end
-    R = R + alpha*norm(brdf_est_opt, 1);
+    R = R + alpha*norm(brdf_est_sparse, 1);
     out = R;
 end
