@@ -3,7 +3,7 @@ close all
 
 step_lin = 1e-03;
 step_ang = 1e-03;
-margin = 1e-01;
+margin = 1e-1;
 mirror_BRDF = @(angle_diff, margin) (1*(abs(angle_diff) <= margin/2));
 
 sigma = 1;
@@ -17,38 +17,100 @@ obs_width = 0.1;
 obs_interval = [-45, 45];
 obs = build_obs(obs_pos, obs_width, obs_size);
 
-source_pos = [0, -5];
+source_pos = [0, -50];
 source_support_width = 10;
-source_support_size = 2;
+source_support_size = 45 iterations, ;
 source_function = @(x_axis) (0.5*(x_axis < 0) + (1*x_axis >= 0));
 %source_function = @(x_axis) (1);
 source = build_source(source_pos, source_support_width, source_support_size, source_function);
 
-[mirr_x, mirr_h, mirr_g] = rendering(obs, obs_interval, source, mirror_BRDF, step_lin, margin, false, step_ang, true, mirror_BRDF, margin, false);
-[x, h, g] = rendering(obs, obs_interval, source, blurred_mirror_BRDF, step_lin, sigma, false, step_ang, true, mirror_BRDF, margin, false);
+[mirr_x, mirr_h, mirr_g] = rendering(obs, obs_interval, source, mirror_BRDF, step_lin, margin, false, step_ang, false, mirror_BRDF, margin, false);
+[x, h, g] = rendering(obs, obs_interval, source, blurred_mirror_BRDF, step_lin, sigma, true, step_ang, true, mirror_BRDF, margin, true);
 
-f_est1 = derendering(g, h, 1);
+% f_est1 = derendering(g, h, 1);
 % f_est2 = derendering(g, h, 2);
 % f_est3 = derendering(g, h, 3);
 % f_est4 = derendering(g, h, 4);
 
-figure;
-subplot(1, 2, 1)
-stem(mirr_x, mirr_g(length(mirr_g)/4:3*length(mirr_g)/4));
-subplot(1, 2, 2)
-stem(x, f_est1(length(f_est1)/4:3*length(f_est1)/4));
 
-[f_est1, h_est1] = blind_derendering(g, 1000, 1000, 3);
-%[f_est2, h_est2] = blind_derendering(g, 1000, 1000, 2);
-%[f_est3, h_est3] = blind_derendering(g, 1000, 1000, 3);
-%[f_est4, h_est4] = blind_derendering(g, 1000, 1000, 4);
+
+[f_est1, h_est1] = blind_derendering(g, 1000, 1000, 5);
+[f_est2, h_est2] = blind_derendering(g, 1000, 1000, 4);
+[f_est3, h_est3] = blind_derendering(g, 1000, 1000, 3);
+[f_est4, h_est4] = blind_derendering(g, 1000, 1000, 2);
+[f_est5, h_est5] = blind_derendering(g, 1000, 1000, 1);
 
 figure;
 subplot(1, 2, 1)
-%stem(x, f_est1(length(f_est1)/4:3*length(f_est1)/4));
-stem(f_est1);
+stem(mirr_x, mirr_g(length(mirr_g)/4:3*length(mirr_g)/4))
+title("Rendered signal (Mirror case)");
+ylabel("Reflected intensity");
+xlabel("Wall points (x_w)");
 subplot(1, 2, 2)
-stem(h_est1);
+stem(mirr_x, h)
+title("BRDF (Wall Projection)");
+ylabel("\rho");
+xlabel("Wall points (x_w)");
+
+figure;
+subplot(1, 2, 1)
+stem(mirr_x, f_est1)
+title("Deconvolved signal (IBD)");
+ylabel("Reflected intensity");
+xlabel("Wall points (x_w)");
+subplot(1, 2, 2)
+stem(mirr_x, h_est1)
+title("Deconvolved BRDF (IBD)");
+ylabel("\rho");
+xlabel("Wall points (x_w)");
+
+figure;
+subplot(1, 2, 1)
+stem(mirr_x, f_est2(length(f_est2)/4:3*length(f_est2)/4))
+title("Deconvolved signal (IRL)");
+ylabel("Reflected intensity");
+xlabel("Wall points (x_w)");
+subplot(1, 2, 2)
+stem(mirr_x, h_est2(length(h_est2)/4:3*length(h_est2)/4))
+title("Deconvolved BRDF (IRL)");
+ylabel("\rho");
+xlabel("Wall points (x_w)");
+
+figure;
+subplot(1, 2, 1)
+stem(mirr_x, f_est3(length(f_est3)/4:3*length(f_est3)/4))
+title("Deconvolved signal (Combined)");
+ylabel("Reflected intensity");
+xlabel("Wall points (x_w)");
+subplot(1, 2, 2)
+stem(mirr_x, h_est3(length(h_est3)/4:3*length(h_est3)/4))
+title("Deconvolved BRDF (Combined)");
+ylabel("\rho");
+xlabel("Wall points (x_w)");
+
+figure;
+subplot(1, 2, 1)
+stem(mirr_x, f_est4(length(f_est4)/4:3*length(f_est4)/4))
+title("Deconvolved signal (NS)");
+ylabel("Reflected intensity");
+xlabel("Wall points (x_w)");
+subplot(1, 2, 2)
+stem(mirr_x, h_est4)
+title("Deconvolved BRDF (NS)");
+ylabel("\rho");
+xlabel("Wall points (x_w)");
+
+figure;
+subplot(1, 2, 1)
+stem(mirr_x, f_est5)
+title("Deconvolved signal (FMD)");
+ylabel("Reflected intensity");
+xlabel("Wall points (x_w)");
+subplot(1, 2, 2)
+stem(mirr_x, h_est5)
+title("Deconvolved BRDF (FMD)");
+ylabel("\rho");
+xlabel("Wall points (x_w)");
 
 % figure;
 % subplot(1, 4, 1)
@@ -311,15 +373,19 @@ end
 function [f_est, h_est] = blind_derendering(g, f_size, h_size, method)
     if method == 1
         [f_est, h_est] = FastMotionDeblurring(g, f_size, h_size, 20, 1, 1, 5, 0.5, 1, 5, 0.1, 0.1);
-        [f_est, h_est] = LucyRichardsonBlind(g, f_est, h_est, 100, 10);
+        %[f_est, h_est] = LucyRichardsonBlind(g, f_est, h_est, 100, 10);
     elseif method == 2
         [f_est, h_est] = NormSparsBlindDeconv(g, f_size, h_size, 100, 20, 20, 0.5, 2, 2, 0.001, 1, 20, 10);
-        [f_est, h_est] = LucyRichardsonBlind(g, f_est, h_est, 100, 10);
+        %[f_est, h_est] = LucyRichardsonBlind(g, f_est, h_est, 100, 10);
     elseif method == 3        
         [f_est, h_est] = IterativeBlindDeconv(g, h_size, f_size, 0.001, 5);
         [f_est, h_est] = LucyRichardsonBlind(g, f_est, h_est, 100, 10);
     elseif method == 4
-        [f_est, h_est] = LucyRichardsonBlind(g, f_size, h_size, 100, 10);
+        inith = ones(1, h_size);
+        initf = ones(1, f_size);
+        [f_est, h_est] = LucyRichardsonBlind(g, initf, inith, 100, 10);
+    elseif method == 5        
+        [f_est, h_est] = IterativeBlindDeconv(g, h_size, f_size, 0.001, 5);
     else
         init = ones(1, h_size);
         %init(round(length(init)/2)) = 1;

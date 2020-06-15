@@ -40,7 +40,7 @@ function [s_est, brdf_est] = DerenderingOpt(g, s_est, brdf_est, T, nmove, nsourc
         R2p = R2;
         R2 = Rfval;                     
         deltaR = max([R1p - R1 R2p - R2]);            
-        disp(deltaR);
+        %disp(deltaR);
         count = count + 1;
     end
     brdf_est_opt = UnSparsify(brdf_est_sparse, brdf_est_sparse_indices, brdf_est_dim1, brdf_est_dim2);

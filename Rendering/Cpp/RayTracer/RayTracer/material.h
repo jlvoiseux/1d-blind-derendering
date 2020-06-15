@@ -72,7 +72,7 @@ public:
 };
 
 vec3 reflect(const vec3& v, const vec3& n) {
-	return v - 2 * dot(v, n)*n + vec3(5, 0, 0);
+	return v - 2 * dot(v, n)*n + vec3(0, 0, 0);
 }
 
 class metal : public material {

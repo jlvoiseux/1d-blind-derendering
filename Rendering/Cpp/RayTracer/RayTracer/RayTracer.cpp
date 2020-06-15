@@ -51,7 +51,7 @@ vec3 color(const ray& r, hittable *world, int depth) {
 		{
 			return(color(ray(rec.p, r.B), world, 0));
 		}
-		else if (depth < 50 && rec.mat_ptr->scatter(r, rec, attenuation, scattered)) {			
+		else if (depth < 1 && rec.mat_ptr->scatter(r, rec, attenuation, scattered)) {			
 			return emitted + attenuation * color(scattered, world, depth + 1);
 		}
 		else {
@@ -127,8 +127,8 @@ hittable *cornell_box() {
 	list[i++] = new flip_normals(new xz_rect(-555, 1110, 0, 555, 555, white));
 	list[i++] = new xz_rect(-555, 1110, 0, 555, 0, white);
 	list[i++] = new flip_normals(new xy_rect(-555, 1110, -555, 1110, 555, mirror));
-	list[i++] = new xy_rect(0, 20, 200, 240, 550, blue_light);
-	list[i++] = new xy_rect(-20, -0, 200, 240, 550, red_light);
+	list[i++] = new xy_rect(0, 20, 200, 240, 550, blue_light_hidden);
+	list[i++] = new xy_rect(-20, -0, 200, 240, 550, red_light_hidden);
 
 	return new hittable_list(list, i);
 }
@@ -136,7 +136,7 @@ hittable *cornell_box() {
 // Draw a PPM image of dimensions nx and ny
 int main() {
 
-	int ns = 20; // Number of samples for each pixel : (aliasing) Min value : 1
+	int ns = 1000; // Number of samples for each pixel : (aliasing) Min value : 1
 	bool do_rt_update = true;
 	bool display_progress = true;
 

@@ -1,6 +1,6 @@
 disp("Derendering v1.0");
-num_workers = input("Number of workers (default : 8)");
-parpool('local', num_workers);
+%num_workers = input("Number of workers (default : 8)");
+%parpool('local', num_workers);
 
 iter_avg = input("Number of iterations for averaging (default : 16)");
 max_count = input("Max Count (default : 30)");

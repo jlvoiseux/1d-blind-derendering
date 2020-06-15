@@ -1,4 +1,4 @@
-clear all
+\bm{o}clear all
 close all
 
 num_lin = 1000;
