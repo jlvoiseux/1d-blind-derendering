@@ -1,5 +1,4 @@
-# 1d-blind-derendering
-Blind Derendering - How to turn a wall into a mirror
+# Blind Derendering - How to turn a wall into a mirror
 Thesis document : https://dial.uclouvain.be/memoire/ucl/fr/object/thesis%3A25235
 
 This repository is separated in two sections:
