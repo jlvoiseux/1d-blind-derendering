@@ -1,5 +1,5 @@
 # Blind Derendering - How to turn a wall into a mirror
-Thesis document : https://dial.uclouvain.be/memoire/ucl/fr/object/thesis%3A25235
+Master Thesis document : https://dial.uclouvain.be/memoire/ucl/fr/object/thesis%3A25235
 
 This repository is separated in two sections:
 - The MATLAB and Julia code used to perform blind deconvolution
